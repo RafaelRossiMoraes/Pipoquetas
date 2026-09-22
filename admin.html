@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipoquetas — Painel do Administrador</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-btn" id="dropbtn"><i class="fa-solid fa-bars"></i></button>
+            <h1 class="logo">Pipoquetas</h1>
+        </div>
+
+        <div class="search-bar">
+            <input type="search" id="busca" name="q" placeholder="Procure Filmes, Empresas, Usuários">
+            <button class="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+
+        <div class="header-right">
+            <i class="fa-regular fa-bell" style="font-size: 125%;"></i>
+
+            <div class="user-avatar" id="avatarBtn">
+                <img src="assets/avatar.png" alt="Avatar">
+            </div>
+
+            <div class="user-dropdown" id="userDropdown">
+                <div class="dropdown-header">
+                    <img src="assets/avatar.png" alt="Avatar" class="dropdown-avatar">
+                    <span>Painel do Administrador</span>
+                </div>
+
+                <div class="dropdown-body">
+                    <div class="dropdown-col">
+                        <a href="index.html">Ver como usuário</a>
+                        <a href="#">Ver/Editar perfil</a>
+                    </div>
+
+                    <div class="dropdown-divider"></div>
+
+                    <div class="dropdown-col">
+                        <a href="#">Feedback/ Sugestões</a>
+                        <a href="login.html" class="logout-link">Sair/Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <a href="#" class="active"><i class="fa-solid fa-gauge"></i> <span>Painel</span></a>
+                <a href="#empresas-pendentes"><i class="fa-solid fa-building"></i> <span>Empresas</span></a>
+                <a href="#filmes-pendentes"><i class="fa-solid fa-clapperboard"></i> <span>Filmes Pendentes</span></a>
+                <a href="#catalogo"><i class="fa-solid fa-film"></i> <span>Catálogo</span></a>
+                <a href="#moderacao"><i class="fa-solid fa-comment-slash"></i> <span>Moderação</span></a>
+            </div>
+            <div class="sidebar-bottom">
+                <a href="#" id="settingsBtn"><i class="fa-solid fa-gear"></i> <span>Configurações</span></a>
+                <a href="login.html"><i class="fa-solid fa-right-from-bracket"></i> <span>Sair</span></a>
+            </div>
+        </aside>
+
+        <div class="overlay" id="sidebarOverlay"></div>
+
+        <main class="content">
+
+            <div class="page-header">
+                <h1>Painel do Administrador</h1>
+                <p>Gerencie empresas, filmes e comentários da plataforma.</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statEmpresasPendentes">0</div>
+                    <div class="stat-label">Empresas pendentes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statFilmesPendentes">0</div>
+                    <div class="stat-label">Filmes pendentes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statCatalogo">0</div>
+                    <div class="stat-label">Filmes no catálogo</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statComentarios">0</div>
+                    <div class="stat-label">Comentários sinalizados</div>
+                </div>
+            </div>
+
+            <!-- Aprovação/recusa de empresas -->
+            <section class="admin-panel" id="empresas-pendentes">
+                <div class="admin-panel-header">
+                    <h2>Empresas aguardando aprovação<span class="count-badge" id="countEmpresas">0</span></h2>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th>CNPJ</th>
+                            <th>E-mail</th>
+                            <th>Data do cadastro</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyEmpresas"></tbody>
+                </table>
+                <p class="empty-state" id="emptyEmpresas" style="display:none;">Nenhuma empresa pendente no momento.</p>
+            </section>
+
+            <!-- Aprovação/edição/remoção de filmes cadastrados por empresas -->
+            <section class="admin-panel" id="filmes-pendentes">
+                <div class="admin-panel-header">
+                    <h2>Filmes cadastrados por empresas<span class="count-badge" id="countFilmesPendentes">0</span></h2>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Filme</th>
+                            <th>Empresa</th>
+                            <th>Gênero</th>
+                            <th>Classificação</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyFilmesPendentes"></tbody>
+                </table>
+                <p class="empty-state" id="emptyFilmesPendentes" style="display:none;">Nenhum filme pendente no momento.</p>
+            </section>
+
+            <!-- Catálogo geral — adicionar/editar/remover qualquer filme -->
+            <section class="admin-panel" id="catalogo">
+                <div class="admin-panel-header">
+                    <h2>Catálogo de filmes<span class="count-badge" id="countCatalogo">0</span></h2>
+                    <button class="btn-primary" id="btnAdicionarFilme"><i class="fa-solid fa-plus"></i> Adicionar filme</button>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Filme</th>
+                            <th>Ano</th>
+                            <th>Plataforma</th>
+                            <th>Avaliação</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyCatalogo"></tbody>
+                </table>
+            </section>
+
+            <!-- Moderação de comentários/avaliações -->
+            <section class="admin-panel" id="moderacao">
+                <div class="admin-panel-header">
+                    <h2>Comentários e avaliações<span class="count-badge" id="countComentarios">0</span></h2>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Usuário</th>
+                            <th>Filme</th>
+                            <th>Comentário</th>
+                            <th>Nota</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyComentarios"></tbody>
+                </table>
+                <p class="empty-state" id="emptyComentarios" style="display:none;">Nenhum comentário no momento.</p>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modal de cadastro/edição de filme -->
+    <div class="form-overlay" id="filmeFormOverlay">
+        <div class="form-container">
+            <h2 id="filmeFormTitulo">Adicionar filme</h2>
+            <form id="filmeForm">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Título</label>
+                        <input type="text" id="campoTitulo" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ano</label>
+                        <input type="number" id="campoAno" min="1900" max="2100" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Classificação indicativa</label>
+                        <select id="campoClassificacao">
+                            <option value="L">Livre</option>
+                            <option value="10">10 anos</option>
+                            <option value="12">12 anos</option>
+                            <option value="14">14 anos</option>
+                            <option value="16">16 anos</option>
+                            <option value="18">18 anos</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Gênero(s)</label>
+                        <input type="text" id="campoGeneros" placeholder="Ex: Drama, Aventura">
+                    </div>
+                    <div class="form-group">
+                        <label>Plataforma</label>
+                        <input type="text" id="campoPlataforma" placeholder="Ex: HBO Max">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Sinopse</label>
+                        <textarea id="campoSinopse"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Imagem (caminho do arquivo)</label>
+                        <input type="text" id="campoImagem" placeholder="img-filmes/nome-do-arquivo.png">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="btnCancelarFilme">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/dados-filmes.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

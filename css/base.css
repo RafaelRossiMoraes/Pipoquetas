@@ -1,0 +1,567 @@
+/* base.css — estilos compartilhados (referência: vish2/index.css) */
+/* background, header, sidebar, footer, dropdown, settings modal */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body,
+html {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    background: url(../assets/bg-img.png) no-repeat center 47.5% / 500px auto fixed,
+        conic-gradient(#A22424, #010101, #A22424) fixed;
+    color: #fff;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #480C0C;
+    height: 10vh;
+    padding-left: 20px;
+    position: sticky;
+    z-index: 3;
+    top: 0;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20%;
+    z-index: 2;
+}
+
+.menu-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.logo {
+    position: relative;
+    top: 5px;
+    font-size: 200%;
+    font-weight: 800;
+    font-family: Ethnocentric;
+}
+
+.search-bar {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 20px;
+    padding: 4px 15px;
+    width: 40%;
+    max-width: 500px;
+    z-index: 1;
+    height: 50%;
+}
+
+.search-bar input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    width: 100%;
+    height: 100%;
+    font-size: 13px;
+}
+
+.search-bar input::placeholder {
+    color: #ccc;
+}
+
+.search-btn {
+    background: transparent;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+}
+
+.header-right {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12.5%;
+    justify-content: center;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #333;
+}
+
+.main-container {
+    display: flex;
+    height: auto;
+}
+
+.sidebar-top,
+.sidebar-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.sidebar a:hover,
+.sidebar a.active {
+    color: #ffffff;
+}
+
+.content {
+    flex: 1;
+    padding: 20px 40px;
+    overflow-y: auto;
+}
+
+@font-face {
+    font-family: 'Ethnocentric';
+    src: url(../assets/fonts/Ethnocentric-Regular.otf);
+}
+
+.sidebar {
+    width: 60px;
+    background-color: #511212;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px 0;
+    border: none;
+    flex-shrink: 0;
+    transition: width 0.3s ease;
+    position: sticky;
+    top: 10vh;
+    height: 90vh;
+}
+
+.sidebar a span {
+    display: none;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 0 20px;
+    width: 100%;
+    color: #b58a8a;
+    font-size: 18px;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.sidebar a i {
+    min-width: 20px;
+    text-align: center;
+}
+
+.sidebar.expanded {
+    width: 220px;
+    z-index: 1000;
+}
+
+.sidebar.expanded a span {
+    display: inline;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(3px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.settings-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.settings-container {
+    width: 75%;
+    height: 75%;
+    background: linear-gradient(#A22424, #010101 75%);
+    border: 1.5px solid #fff;
+    border-radius: 20px;
+    display: flex;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+.settings-sidebar {
+    width: 200px;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+    padding: 30px 15px;
+    gap: 15px;
+}
+
+.settings-tab {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: left;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-radius: 20px;
+    transition: all 0.2s;
+}
+
+.settings-tab.active {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.settings-tab.btn-sair {
+    color: #ff4d4d;
+    margin-top: auto;
+}
+
+.settings-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.settings-header h2 {
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+}
+
+.close-modal-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 28px;
+    cursor: pointer;
+}
+
+.settings-body {
+    display: flex;
+    padding: 30px;
+    gap: 40px;
+    flex: 1;
+}
+
+.settings-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.info-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+}
+
+.info-group label {
+    font-weight: 800;
+    color: #fff;
+    min-width: 150px;
+}
+
+.info-group span {
+    color: #ddd;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toggle-icon {
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.theme-toggle {
+    display: inline-flex;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 2px;
+}
+
+.theme-toggle span {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.theme-toggle span.active {
+    background: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-weight: bold;
+}
+.site-footer {
+    margin-top: 50px;
+    padding: 2.5%;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 1fr 1.4fr 1.3fr;
+    gap: 24px;
+    align-items: start;
+    background-color: transparent;
+}
+
+.footer-logo-icon {
+    font-size: 2.2rem;
+}
+
+.footer-logo-text {
+    font-weight: 900;
+    letter-spacing: 2px;
+    font-size: 0.85rem;
+    color: #fff;
+}
+
+.footer-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+}
+
+.footer-col a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+.footer-col a:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.footer-logo {
+    width: 100%;
+    padding-right: 12.5%;
+}
+
+.footer-logout {
+    color: #ff4d4d !important;
+}
+
+.footer-team h3,
+.footer-contact h3 {
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    color: #fff;
+}
+
+.footer-team-body {
+    display: flex;
+    align-items: center;
+    gap: 14%;
+}
+
+.footer-team-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    font-size: 0.88rem;
+    color: #ccc;
+}
+
+.footer-team-list>li:first-child {
+    font-size: 0.8rem;
+    color: #9a9a9a;
+    margin-bottom: 10px;
+}
+
+.footer-2DSB {
+    width: 40%;
+    margin-bottom: 10%;
+}
+
+.footer-contact h3:last-of-type {
+    margin-top: 14px;
+}
+
+.footer-icons {
+    display: flex;
+    gap: 14px;
+}
+
+.footer-icons a {
+    color: #ccc;
+    font-size: 1.2rem;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.footer-icons a:hover {
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+@media (max-width: 1024px) {
+    .site-footer {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .site-footer {
+        grid-template-columns: 1fr;
+    }
+
+    .plan-card {
+        flex: 0 0 260px;
+    }
+}
+.user-avatar {
+    cursor: pointer;
+    width: 32.5%;
+}
+
+.user-dropdown {
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    width: 280px;
+    background-color: #2a2a2a;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+    z-index: 99999;
+    display: none;
+}
+
+.user-dropdown.active {
+    display: block !important;
+}
+
+.dropdown-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 12px;
+}
+
+.dropdown-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.dropdown-header span {
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.dropdown-body {
+    display: flex;
+    gap: 12px;
+}
+
+.dropdown-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+}
+
+.dropdown-col a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 0.8rem;
+    transition: color 0.2s;
+}
+
+.dropdown-col a:hover {
+    color: #fff;
+}
+
+.dropdown-col .logout-link {
+    color: #ff5555;
+}
+
+.dropdown-divider {
+    width: 1px;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+/* Tema escuro (substitui o antigo index_dark.html duplicado; chave via .theme-toggle) */
+body[data-theme="escuro"] {
+    background: url(../assets/bg-img.png) no-repeat center 47.5% / 500px auto fixed,
+        conic-gradient(#1a0505, #000000, #1a0505) fixed;
+}
+
+body[data-theme="escuro"] .header {
+    background-color: #200404;
+}
+
+body[data-theme="escuro"] .sidebar {
+    background-color: #260606;
+}
+
+body[data-theme="escuro"] .settings-container {
+    background: linear-gradient(#3a0d0d, #000000 75%);
+}

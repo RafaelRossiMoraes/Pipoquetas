@@ -1,0 +1,522 @@
+/* filme.css — estilos específicos da página do filme (base: filme/estilo.css) */
+.movie-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 28px;
+    align-items: start;
+}
+
+/* ---------- Trailer ---------- */
+.trailer {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: #1a1a1a;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+
+.trailer iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    object-fit: cover;
+    display: block;
+}
+
+.trailer-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 76px;
+    height: 76px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(3px);
+    color: #fff;
+    font-size: 1.9rem;
+    display: grid;
+    place-items: center;
+    padding-left: 5px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.trailer:hover .trailer-play {
+    background: rgba(255, 255, 255, 0.55);
+    transform: translate(-50%, -50%) scale(1.06);
+}
+
+.trailer-yt {
+    position: absolute;
+    right: 18px;
+    bottom: 16px;
+    width: 42px;
+    height: 30px;
+    border-radius: 8px;
+    background: #e11d1d;
+    color: #fff;
+    font-size: 0.8rem;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+}
+
+.trailer.playing .trailer-play,
+.trailer.playing .trailer-yt {
+    display: none;
+}
+
+/* ---------- Título e informações ---------- */
+.movie-title {
+    font-size: 2.75rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-top: 24px;
+}
+
+.movie-meta {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-top: 16px;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.class-indicativa {
+    width: 32px;
+    height: 32px;
+}
+
+.meta-sep {
+    width: 2px;
+    height: 20px;
+    background: #fff;
+}
+
+.movie-genres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.movie-genres a {
+    background-color: #8b8480;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.05rem;
+    padding: 3px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.movie-genres a:hover {
+    background-color: #a39d99;
+}
+
+/* ---------- Coluna lateral ---------- */
+.movie-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.score-card {
+    background-color: #36322f;
+    border-radius: 12px;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+}
+
+.score-card>i {
+    font-size: 6.5rem;
+    color: #ffd700;
+    flex-shrink: 0;
+}
+
+.score-value {
+    font-size: 6rem;
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -2px;
+    text-align: center;
+}
+
+.score-count {
+    display: block;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-align: center;
+    margin-top: 2px;
+    white-space: nowrap;
+}
+
+.related-card {
+    background-color: #36322f;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.related-card h3 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 800;
+    padding: 14px 0 10px;
+    border-bottom: 2px solid #e8e8e8;
+}
+
+.related-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 14px 16px;
+    color: #fff;
+    text-decoration: none;
+    border-bottom: 1px solid #e8e8e8;
+    transition: background-color 0.2s;
+}
+
+.related-item:last-child {
+    border-bottom: none;
+}
+
+.related-item:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.related-item img {
+    width: 72px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+    background-color: #1a1a1a;
+}
+
+.related-item h4 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.related-item p {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 1.2rem;
+}
+
+.related-item p i {
+    color: #ffd700;
+    font-size: 0.9rem;
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 1000px) {
+    .movie-page {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .content {
+        padding: 16px;
+    }
+
+    .movie-title {
+        font-size: 1.9rem;
+    }
+
+    .score-card>i {
+        font-size: 4.5rem;
+    }
+
+    .score-value {
+        font-size: 4.5rem;
+    }
+
+    .trailer-play {
+        width: 56px;
+        height: 56px;
+        font-size: 1.4rem;
+    }
+}
+
+
+/* ==========================================================
+   Onde Assistir
+   ========================================================== */
+.watch-card {
+    margin-top: 28px;
+    background-color: #36322f;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.watch-card h3 {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.watch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.watch-item {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 24px;
+    height: 80px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.watch-item:nth-child(odd) {
+    border-right: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.watch-item:last-child {
+    border-bottom: none;
+}
+
+.watch-name {
+    flex: 1;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.watch-price {
+    background-color: #8b8480;
+    width: 100px;
+    height: max-content;
+    text-align: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.05rem;
+    padding: 8px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+}
+
+.watch-price:hover {
+    background-color: #a39d99;
+}
+
+/* Logos das plataformas (troque por <img> se tiver os arquivos) */
+.watch-logo {
+    width: 42px;
+    height: auto;
+}
+
+/* ==========================================================
+   Elenco
+   ========================================================== */
+.cast-card {
+    background-color: #36322f;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.cast-card h3 {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.cast-card h3 a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.cast-card h3 i {
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
+.cast-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.cast-member {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 6px 8px;
+    color: #fff;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.cast-member+.cast-member {
+    border-left: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.cast-member:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.cast-member img {
+    width: 66px;
+    height: 88px;
+    object-fit: cover;
+    border-radius: 3px;
+    background-color: #1a1a1a;
+}
+
+.cast-member span {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.reviews {
+    margin: 40px 0 30px;
+    background-color: #36322f;
+    border-radius: 12px;
+}
+
+.reviews-title {
+    font-size: 2.75rem;
+    font-weight: 800;
+    margin-bottom: 18px;
+    padding: 14px 24px 10px;
+}
+
+.review-card {
+    padding: 14px 24px 18px;
+}
+
+
+.review-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.review-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #1a1a1a;
+}
+
+.review-user {
+    font-size: 1rem;
+}
+
+.review-stars {
+    color: #ffd700;
+    font-size: 0.85rem;
+    display: flex;
+    gap: 2px;
+    margin-top: 2px;
+}
+
+.review-text {
+    margin: 8px 0 0 46px;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 700px) {
+    .watch-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .watch-item:nth-child(odd) {
+        border-right: none;
+    }
+
+    .watch-item:nth-last-child(2) {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+    }
+
+    .reviews-title {
+        font-size: 2rem;
+    }
+
+    .review-text {
+        margin-left: 0;
+    }
+}
+
+/* Formulário de avaliação (novo — unificação) */
+.review-form {
+    background-color: rgba(20, 5, 5, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.review-form h3 {
+    font-size: 1.1rem;
+}
+
+.review-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.review-form label {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.review-form select,
+.review-form textarea {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    color: #fff;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+
+.review-form select option {
+    color: #000;
+}
+
+.btn-primary {
+    background-color: #a8252a;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    padding: 10px 18px;
+    font-weight: 700;
+    cursor: pointer;
+    align-self: flex-start;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.2);
+}

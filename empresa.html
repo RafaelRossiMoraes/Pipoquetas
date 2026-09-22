@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipoquetas — Painel da Empresa</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-btn" id="dropbtn"><i class="fa-solid fa-bars"></i></button>
+            <h1 class="logo">Pipoquetas</h1>
+        </div>
+
+        <div class="search-bar">
+            <input type="search" id="busca" name="q" placeholder="Procure seus filmes cadastrados">
+            <button class="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+
+        <div class="header-right">
+            <i class="fa-regular fa-bell" style="font-size: 125%;"></i>
+
+            <div class="user-avatar" id="avatarBtn">
+                <img src="assets/avatar.png" alt="Avatar">
+            </div>
+
+            <div class="user-dropdown" id="userDropdown">
+                <div class="dropdown-header">
+                    <img src="assets/avatar.png" alt="Avatar" class="dropdown-avatar">
+                    <span>StreamFlix Distribuidora</span>
+                </div>
+
+                <div class="dropdown-body">
+                    <div class="dropdown-col">
+                        <a href="#">Ver/Editar perfil</a>
+                        <a href="#">Dados da empresa</a>
+                    </div>
+
+                    <div class="dropdown-divider"></div>
+
+                    <div class="dropdown-col">
+                        <a href="#">Feedback/ Sugestões</a>
+                        <a href="login.html" class="logout-link">Sair/Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <a href="#" class="active"><i class="fa-solid fa-gauge"></i> <span>Painel</span></a>
+                <a href="#meus-filmes"><i class="fa-solid fa-film"></i> <span>Meus Filmes</span></a>
+                <a href="#desempenho"><i class="fa-solid fa-chart-simple"></i> <span>Desempenho</span></a>
+            </div>
+            <div class="sidebar-bottom">
+                <a href="#" id="settingsBtn"><i class="fa-solid fa-gear"></i> <span>Configurações</span></a>
+                <a href="login.html"><i class="fa-solid fa-right-from-bracket"></i> <span>Sair</span></a>
+            </div>
+        </aside>
+
+        <div class="overlay" id="sidebarOverlay"></div>
+
+        <main class="content">
+
+            <div class="page-header">
+                <h1>Painel da Empresa</h1>
+                <p>Cadastre e acompanhe o desempenho dos filmes da sua distribuidora.</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statTotalFilmes">0</div>
+                    <div class="stat-label">Filmes cadastrados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statPendentes">0</div>
+                    <div class="stat-label">Aguardando aprovação</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statVisualizacoes">0</div>
+                    <div class="stat-label">Visualizações totais</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statAvaliacaoMedia">0.0</div>
+                    <div class="stat-label">Avaliação média</div>
+                </div>
+            </div>
+
+            <!-- Meus filmes: cadastrar / editar / remover -->
+            <section class="admin-panel" id="meus-filmes">
+                <div class="admin-panel-header">
+                    <h2>Meus filmes<span class="count-badge" id="countMeusFilmes">0</span></h2>
+                    <button class="btn-primary" id="btnAdicionarFilme"><i class="fa-solid fa-plus"></i> Cadastrar filme</button>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Filme</th>
+                            <th>Ano</th>
+                            <th>Plataforma</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyMeusFilmes"></tbody>
+                </table>
+                <p class="empty-state" id="emptyMeusFilmes" style="display:none;">Você ainda não cadastrou nenhum filme.</p>
+            </section>
+
+            <!-- Estatísticas por filme -->
+            <section class="admin-panel" id="desempenho">
+                <div class="admin-panel-header">
+                    <h2>Desempenho por filme</h2>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Filme</th>
+                            <th>Visualizações</th>
+                            <th>Avaliações recebidas</th>
+                            <th>Nota média</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyDesempenho"></tbody>
+                </table>
+                <p class="empty-state" id="emptyDesempenho" style="display:none;">Sem dados de desempenho ainda.</p>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modal de cadastro/edição de filme -->
+    <div class="form-overlay" id="filmeFormOverlay">
+        <div class="form-container">
+            <h2 id="filmeFormTitulo">Cadastrar filme</h2>
+            <form id="filmeForm">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Título</label>
+                        <input type="text" id="campoTitulo" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ano</label>
+                        <input type="number" id="campoAno" min="1900" max="2100" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Classificação indicativa</label>
+                        <select id="campoClassificacao">
+                            <option value="L">Livre</option>
+                            <option value="10">10 anos</option>
+                            <option value="12">12 anos</option>
+                            <option value="14">14 anos</option>
+                            <option value="16">16 anos</option>
+                            <option value="18">18 anos</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Gênero(s)</label>
+                        <input type="text" id="campoGeneros" placeholder="Ex: Drama, Aventura">
+                    </div>
+                    <div class="form-group">
+                        <label>Plataforma</label>
+                        <input type="text" id="campoPlataforma" placeholder="Ex: HBO Max">
+                    </div>
+                    <div class="form-group">
+                        <label>Preço</label>
+                        <input type="text" id="campoPreco" placeholder="Ex: R$14,90">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Sinopse</label>
+                        <textarea id="campoSinopse"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Imagem (caminho do arquivo)</label>
+                        <input type="text" id="campoImagem" placeholder="img-filmes/nome-do-arquivo.png">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="btnCancelarFilme">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script src="js/empresa.js"></script>
+</body>
+
+</html>
