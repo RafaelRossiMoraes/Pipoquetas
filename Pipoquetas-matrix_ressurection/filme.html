@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Resurrections</title>
+    <link rel="stylesheet" href="estilo.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-btn" id="dropbtn"><i class="fa-solid fa-bars"></i></button>
+            <h1 class="logo">Pipoquetas</h1>
+        </div>
+
+        <div class="search-bar">
+            <input type="search" id="busca" name="q" placeholder="Procure Filmes, Atores, Perfis e Críticos">
+            <button class="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+
+        <div class="header-right">
+            <i class="fa-regular fa-bell"></i>
+
+            <div class="user-avatar" id="avatarBtn">
+                <img src="Avatar.png" alt="Avatar">
+            </div>
+
+            <!-- Menu posicionado do lado de fora do avatar para não ser cortado -->
+            <div class="user-dropdown" id="userDropdown">
+                <div class="dropdown-header">
+                    <img src="Avatar.png" alt="Avatar" class="dropdown-avatar">
+                    <span>Seja bem-vindo, Jorel!</span>
+                </div>
+
+                <div class="dropdown-body">
+                    <div class="dropdown-col">
+                        <a href="#">Ver/Editar perfil</a>
+                        <a href="#">Histórico de Avaliações</a>
+                        <a href="#">Minha Lista</a>
+                    </div>
+
+                    <div class="dropdown-divider"></div>
+
+                    <div class="dropdown-col">
+                        <a href="#">Feedback/ Sugestões</a>
+                        <a href="#" class="logout-link">Sair/Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <a href="#"><i class="fa-solid fa-house"></i> <span>Início</span></a>
+                <a href="#"><i class="fa-solid fa-globe"></i> <span>Explore</span></a>
+                <a href="#"><i class="fa-solid fa-box-archive"></i> <span>Assistir Depois</span></a>
+                <a href="#"><i class="fa-solid fa-star"></i> <span>Avaliações</span></a>
+                <a href="#"><i class="fa-solid fa-heart"></i> <span>Favoritos</span></a>
+                <a href="#"><i class="fa-solid fa-rectangle-list"></i> <span>Playlists</span></a>
+            </div>
+            <div class="sidebar-bottom">
+                <a href="#"><i class="fa-regular fa-star"></i> <span>PipoPlus+</span></a>
+                <a href="#" id="settingsBtn"><i class="fa-solid fa-gear"></i> <span>Configurações</span></a>
+                <a href="#"><i class="fa-solid fa-right-from-bracket"></i> <span>Sair</span></a>
+            </div>
+        </aside>
+
+        <div class="overlay" id="sidebarOverlay"></div>
+
+        <main class="content">
+            <div class="movie-page">
+
+                <section class="movie-info">
+                    <div class="trailer" id="trailer" data-video-id="aHmDi6CUQ3M">
+                        <button class="trailer-play" aria-label="Reproduzir trailer"><i
+                                class="fa-solid fa-play"></i></button>
+                        <span class="trailer-yt"><i class="fa-solid fa-play"></i></span>
+                    </div>
+
+                    <h2 class="movie-title">Matrix Resurrections (2021)</h2>
+
+                    <div class="movie-meta">
+                        <img class="class-indicativa" src="img_class/14.png" alt="">
+                        <span class="meta-sep"></span>
+                        <span>2h28min</span>
+                        <span class="meta-sep"></span>
+                        <span>2021</span>
+                    </div>
+
+                    <div class="movie-genres">
+                        <a href="#">Animação</a>
+                        <a href="#">Aventura</a>
+                        <a href="#">Comédia</a>
+                        <a href="#">Fantasia</a>
+                        <a href="#">Infantil</a>
+                    </div>
+
+                    <div class="watch-card">
+                        <h3>Onde Assistir</h3>
+                        <div class="watch-grid">
+                            <div class="watch-item">
+                                <img class="watch-logo" src="img-logos/youtube.png" alt="Youtube">
+                                <span class="watch-name">Youtube</span>
+                                <a href="https://www.youtube.com/watch?v=O5rXlNRjyUE" class="watch-price">R$ 19,90</a>
+                            </div>
+                            <div class="watch-item">
+                                <img class="watch-logo" src="img-logos/clarotv.png" alt="Claro TV+">
+                                <span class="watch-name">Claro TV+</span>
+                                <a href="https://www.clarotvmais.com.br/filme/~/2908971" class="watch-price">R$ 9,90</a>
+                            </div>
+                            <div class="watch-item">
+                                <img class="watch-logo" src="img-logos/appletv.png" alt="Apple TV">
+                                <span class="watch-name">Apple TV</span>
+                                <a href="https://tv.apple.com/br/movie/the-matrix-resurrections/umc.cmc.1xfut1sq2hvb9faupyabxog7q"
+                                    class="watch-price">R$ 19,90</a>
+                            </div>
+                            <div class="watch-item">
+                                <img class="watch-logo" src="img-logos/prime-video.png" alt="Prime Video">
+                                <span class="watch-name">Prime Video</span>
+                                <a href="https://www.primevideo.com/dp/amzn1.dv.gti.bd6bd6ed-93ce-41f7-a06d-3a1277b94fcb?autoplay=0&ref_=atv_cf_strg_wb"
+                                    class="watch-price">Assine</a>
+                            </div>
+                            <div class="watch-item">
+                                <img class="watch-logo" src="img-logos/mercado-play.png" alt="Mercado Play">
+                                <span class="watch-name">Mercado Play</span>
+                                <a href="https://play.mercadolivre.com.br/assistir/the-matrix-resurrections/d31890fb71ed47a6bc15a12909c5229a?origin=google_media_actions_feed&matt_tool=39220561"
+                                    class="watch-price">R$ 8,90</a>
+                            </div>
+                            <div class="watch-item">
+                                <img class="watch-logo" src="img-logos/hbo-max.png" alt="HBO MAX">
+                                <span class="watch-name">HBO MAX</span>
+                                <a href="https://www.hbomax.com/br/pt/movie/59f8d3bb-5c45-431d-80cd-331eafac0b81?utm_source=universal_search"
+                                    class="watch-price">Assine</a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <aside class="movie-aside">
+                    <div class="score-card">
+                        <i class="fa-solid fa-star"></i>
+                        <div class="score-value">3.3
+                            <span class="score-count">1923 Avaliações</span>
+                        </div>
+                    </div>
+
+                    <div class="related-card">
+                        <h3>Relacionados</h3>
+
+                        <a href="#" class="related-item">
+                            <img src="img-filmes/1.png" alt="Duna 2 - O Filme">
+                            <div>
+                                <h4>Duna 2 - O filme</h4>
+                                <p><i class="fa-solid fa-star"></i> 4.1 | 2024</p>
+                            </div>
+                        </a>
+
+                        <a href="#" class="related-item">
+                            <img src="img-filmes/2.png" alt="Interstellar">
+                            <div>
+                                <h4>Interstellar</h4>
+                                <p><i class="fa-solid fa-star"></i> 3,9 | 2014</p>
+                            </div>
+                        </a>
+
+                        <a href="#" class="related-item">
+                            <img src="img-filmes/3.png" alt="Blade Runner 2049">
+                            <div>
+                                <h4>Blade Runner 2049</h4>
+                                <p><i class="fa-solid fa-star"></i> 2,7 | 2017</p>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="cast-card">
+                        <h3><a href="#">Elenco ></a></h3>
+                        <div class="cast-row">
+                            <a href="#" class="cast-member">
+                                <img src="img-elenco/keanu_reeves.jpg" alt="Neo">
+                                <span>Neo</span>
+                                <span>Keanu Reeves</span>
+                            </a>
+                            <a href="#" class="cast-member">
+                                <img src="img-elenco/carrie-anne_moss.jpg" alt="Trinity">
+                                <span>Trinity</span>
+                                <span>Carrie-Anne Moss</span>
+                            </a>
+                            <a href="#" class="cast-member">
+                                <img src="img-elenco/yahya_abdul-mateen_ii.jpg" alt="Morpheus">
+                                <span>Morpheus</span>
+                                <span>Yahya Abdul-Mateen II</span>
+                            </a>
+                        </div>
+                    </div>
+                </aside>
+
+            </div>
+
+            <section class="reviews">
+                <h2 class="reviews-title">Avaliações</h2>
+
+                <article class="review-card">
+                    <header class="review-head">
+                        <img src="avatar.png" alt="jorel" class="review-avatar">
+                        <div>
+                            <strong class="review-user">Jorel</strong>
+                            <div class="review-stars" aria-label="1 de 5 estrelas">
+                                <i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i><i
+                                    class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i
+                                    class="fa-regular fa-star"></i>
+                            </div>
+                        </div>
+                    </header>
+                    <p class="review-text">NÃO GOSTEI NEM UM POUCO, ESPERAVA MUITO MAIS JÁ QUE A FRANQUIA NUNCA NOS
+                        DECEPCIONOU. COMO UM GRANDE FÃ, ESTOU ENTRISTECIDO COM A QUALIDADE DO FILME.</p>
+                </article>
+
+                <article class="review-card">
+                    <header class="review-head">
+                        <img src="avatar2.png" alt="pessoafeliz" class="review-avatar">
+                        <div>
+                            <strong class="review-user">pessoa feliz</strong>
+                            <div class="review-stars" aria-label="4 de 5 estrelas">
+                                <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i
+                                    class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i
+                                    class="fa-regular fa-star"></i>
+                            </div>
+                        </div>
+                    </header>
+                    <p class="review-text">Muito interessante de fato, mas não é o melhor da franquia.</p>
+                </article>
+            </section>
+            <footer class="site-footer">
+                <img class="footer-logo" src="logos/logo-branca.png" alt="Logo Branca">
+
+                <div class="footer-col">
+                    <a href="#">Menu inicial</a>
+                    <a href="#">Social</a>
+                    <a href="#">Explore</a>
+                    <a href="#">Favoritos</a>
+                    <a href="#">Avaliações</a>
+                    <a href="#">Minhas coleções</a>
+                </div>
+
+                <div class="footer-col">
+                    <a href="#">Planos &amp; Assinaturas</a>
+                    <a href="#">Configurações</a>
+                    <a href="#">Perfil</a>
+                    <a href="#">Notificações</a>
+                    <a href="#" class="footer-logout">Sair</a>
+                </div>
+
+                <div class="footer-col footer-team">
+                    <h3>PROJETO INTEGRADOR</h3>
+                    <div class="footer-team-body">
+                        <ul class="footer-team-list">
+                            <li>Grupo por:</li>
+                            <li>Rafael Rossi</li>
+                            <li>Vitor Nunes</li>
+                            <li>Rhian Victor</li>
+                            <li>Matheus Gonçalvez</li>
+                        </ul>
+                        <img class="footer-2DSB" src="logos/2DSB.png" alt="Logo 2DSB">
+                    </div>
+                </div>
+
+                <div class="footer-col footer-contact">
+                    <h3>Entre em Contato:</h3>
+                    <div class="footer-icons">
+                        <a href="#" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+                        <a href="#" aria-label="E-mail"><i class="fa-regular fa-envelope"></i></a>
+                        <a href="#" aria-label="Telegram"><i class="fa-brands fa-telegram"></i></a>
+                    </div>
+                    <h3>Siga Nossas Redes Sociais</h3>
+                    <div class="footer-icons">
+                        <a href="#" aria-label="X"><i class="fa-brands fa-x-twitter"></i></a>
+                        <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                        <a href="#" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
+                        <a href="#" aria-label="Discord"><i class="fa-brands fa-discord"></i></a>
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+    <div class="settings-overlay" id="settingsModal">
+        <div class="settings-container">
+            <aside class="settings-sidebar">
+                <button class="settings-tab active">Conta</button>
+                <button class="settings-tab">Privacidade</button>
+                <button class="settings-tab">Informações</button>
+                <button class="settings-tab">Segurança</button>
+                <button class="settings-tab">Ajuda</button>
+                <button class="settings-tab btn-sair">Sair</button>
+            </aside>
+
+            <div class="settings-content">
+                <header class="settings-header">
+                    <h2>Informações da Conta</h2>
+                    <button class="close-modal-btn" id="closeSettingsBtn"><i class="fa-solid fa-xmark"></i></button>
+                </header>
+
+                <div class="settings-body">
+                    <div class="settings-col">
+                        <div class="info-group">
+                            <label>Nome:</label>
+                            <span>Jorel</span>
+                        </div>
+                        <div class="info-group">
+                            <label>CPF:</label>
+                            <span>***.***.***-99 <i class="fa-regular fa-eye toggle-icon"></i></span>
+                        </div>
+                        <div class="info-group">
+                            <label>Senha:</label>
+                            <span>******** <i class="fa-regular fa-eye toggle-icon"></i></span>
+                        </div>
+                        <div class="info-group">
+                            <label>Perfil:</label>
+                            <span>Privado</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Gênero:</label>
+                            <span>Masculino</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-col">
+                        <div class="info-group">
+                            <label>E-mail:</label>
+                            <span>jorel.oficial.br@gmail.com</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Tipo de Usuário:</label>
+                            <span>Comum</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Data de Cadastro:</label>
+                            <span>06/07/2026</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Data de Nascimento:</label>
+                            <span>09/08/1995</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Tema:</label>
+                            <div class="theme-toggle">
+                                <span>Escuro</span>
+                                <span class="active">Claro</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Menu lateral
+        const dropbtn = document.getElementById('dropbtn');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('expanded');
+            sidebarOverlay.classList.toggle('active');
+        }
+
+        dropbtn.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+
+        // Modal de configurações
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            if (link.textContent.includes('Configurações')) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    settingsModal.classList.add('active');
+                    sidebar.classList.remove('expanded');
+                    sidebarOverlay.classList.remove('active');
+                });
+            }
+        });
+
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('active');
+        });
+
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.classList.remove('active');
+            }
+        });
+
+        // Dropdown do avatar
+        document.addEventListener('DOMContentLoaded', () => {
+            const avatarBtn = document.getElementById('avatarBtn');
+            const userDropdown = document.getElementById('userDropdown');
+
+            if (avatarBtn && userDropdown) {
+                avatarBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('active');
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!userDropdown.contains(e.target) && !avatarBtn.contains(e.target)) {
+                        userDropdown.classList.remove('active');
+                    }
+                });
+            }
+        });
+
+        // Trailer: ao clicar, troca a capa pelo player do YouTube
+        const trailer = document.getElementById('trailer');
+
+        trailer.addEventListener('click', () => {
+            if (trailer.classList.contains('playing')) return;
+
+            const id = trailer.dataset.videoId;
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+            iframe.title = 'Trailer de Matrix Resurrections';
+            iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+            iframe.allowFullscreen = true;
+            iframe.referrerPolicy = 'strict-origin-when-cross-origin'; // o YouTube exige o referrer (evita o erro 153)
+
+            trailer.classList.add('playing');
+            trailer.replaceChildren(iframe);
+        });
+    </script>
+</body>
+
+</html>

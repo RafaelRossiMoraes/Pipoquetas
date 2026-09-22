@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipoquetas - Explore</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="explore.css">
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-btn" id="dropbtn"><i class="fa-solid fa-bars"></i></button>
+            <h1 class="logo">Pipoquetas</h1>
+        </div>
+
+        <div class="search-bar">
+            <input type="search" id="busca" name="q" placeholder="Procure Filmes, Atores, Perfis e Críticos">
+            <button class="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+
+        <div class="header-right">
+            <i class="fa-regular fa-bell"></i>
+
+            <div class="user-avatar" id="avatarBtn">
+                <img src="Avatar.png" alt="Avatar">
+            </div>
+
+            <div class="user-dropdown" id="userDropdown">
+                <div class="dropdown-header">
+                    <img src="Avatar.png" alt="Avatar" class="dropdown-avatar">
+                    <span>Seja bem-vindo, Jorel!</span>
+                </div>
+
+                <div class="dropdown-body">
+                    <div class="dropdown-col">
+                        <a href="#">Ver/Editar perfil</a>
+                        <a href="#">Histórico de Avaliações</a>
+                        <a href="#">Minha Lista</a>
+                    </div>
+
+                    <div class="dropdown-divider"></div>
+
+                    <div class="dropdown-col">
+                        <a href="#">Feedback/ Sugestões</a>
+                        <a href="#" class="logout-link">Sair/Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="explore-container">
+
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <a href="#"><i class="fa-solid fa-house"></i> <span>Início</span></a>
+                <a href="#"><i class="fa-solid fa-globe"></i> <span>Explore</span></a>
+                <a href="#"><i class="fa-solid fa-box-archive"></i> <span>Assistir Depois</span></a>
+                <a href="#"><i class="fa-solid fa-star"></i> <span>Avaliações</span></a>
+                <a href="#"><i class="fa-solid fa-heart"></i> <span>Favoritos</span></a>
+                <a href="#"><i class="fa-solid fa-rectangle-list"></i> <span>Playlists</span></a>
+            </div>
+            <div class="sidebar-bottom">
+                <a href="#"><i class="fa-regular fa-star"></i> <span>PipoPlus+</span></a>
+                <a href="#" id="settingsBtn"><i class="fa-solid fa-gear"></i> <span>Configurações</span></a>
+                <a href="#"><i class="fa-solid fa-right-from-bracket"></i> <span>Sair</span></a>
+            </div>
+        </aside>
+
+        <div class="overlay" id="sidebarOverlay"></div>
+
+        <main class="content">
+
+            <div class="explore-layout">
+                <section class="movies-grid">
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/bastardos.png" alt="Bastardos Inglórios">
+                            <span class="card-year">2009</span>
+                            <span class="card-rating"><i class="fa-regular fa-star"></i> 4.3</span>
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-18">A18</span>
+                            <h3 class="movie-title">Bastardos Inglórios</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem judaica,
+                                com o objetivo de realizar uma missão suicida contra os alemães. O objetivo é matar o
+                                maior número possível de nazistas, da forma mais cruel possível.
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/coach-carter.png" alt="Coach Carter">
+                            <span class="card-year">2005</span>
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-14">A14</span>
+                            <h3 class="movie-title">Coach Carter</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem judaica,
+                                com o objetivo de realizar uma missão suicida contra os alemães. O objetivo é matar o
+                                maior número possível de nazistas...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/lalaland.png" alt="La La Land">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-l">AL</span>
+                            <h3 class="movie-title">La La Land</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/ralph.png" alt="Detona Ralph">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-l">AL</span>
+                            <h3 class="movie-title">Detona Ralph</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/demon-slayer.png" alt="Demon Slayer">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-18">A18</span>
+                            <h3 class="movie-title">Demon Slayer: O Filme</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/guardioes.png" alt="Guardiões da Galáxia 3">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-14">A14</span>
+                            <h3 class="movie-title">Guardiões da Galáxia 3</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/avioes.png" alt="Aviões">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-l">AL</span>
+                            <h3 class="movie-title">Aviões</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/ralph.png" alt="Detona Ralph">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-l">AL</span>
+                            <h3 class="movie-title">Detona Ralph</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/demon-slayer.png" alt="Demon Slayer">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-18">A18</span>
+                            <h3 class="movie-title">Demon Slayer: O Filme</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/guardioes.png" alt="Guardiões da Galáxia 3">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-14">A14</span>
+                            <h3 class="movie-title">Guardiões da Galáxia 3</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+                    
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/demon-slayer.png" alt="Demon Slayer">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-18">A18</span>
+                            <h3 class="movie-title">Demon Slayer: O Filme</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/guardioes.png" alt="Guardiões da Galáxia 3">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-14">A14</span>
+                            <h3 class="movie-title">Guardiões da Galáxia 3</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/avioes.png" alt="Aviões">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-l">AL</span>
+                            <h3 class="movie-title">Aviões</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/bastardos.png" alt="Bastardos Inglórios">
+                            <span class="card-year">2009</span>
+                            <span class="card-rating"><i class="fa-regular fa-star"></i> 4.3</span>
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-18">A18</span>
+                            <h3 class="movie-title">Bastardos Inglórios</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem judaica,
+                                com o objetivo de realizar uma missão suicida contra os alemães. O objetivo é matar o
+                                maior número possível de nazistas, da forma mais cruel possível.
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/coach-carter.png" alt="Coach Carter">
+                            <span class="card-year">2005</span>
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-14">A14</span>
+                            <h3 class="movie-title">Coach Carter</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem judaica,
+                                com o objetivo de realizar uma missão suicida contra os alemães. O objetivo é matar o
+                                maior número possível de nazistas...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/lalaland.png" alt="La La Land">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-l">AL</span>
+                            <h3 class="movie-title">La La Land</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/ralph.png" alt="Detona Ralph">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-l">AL</span>
+                            <h3 class="movie-title">Detona Ralph</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/demon-slayer.png" alt="Demon Slayer">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-18">A18</span>
+                            <h3 class="movie-title">Demon Slayer: O Filme</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/guardioes.png" alt="Guardiões da Galáxia 3">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-14">A14</span>
+                            <h3 class="movie-title">Guardiões da Galáxia 3</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/avioes.png" alt="Aviões">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-l">AL</span>
+                            <h3 class="movie-title">Aviões</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/corra.png" alt="Corra!">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-16">A16</span>
+                            <h3 class="movie-title">Corra!</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/corra.png" alt="Corra!">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-16">A16</span>
+                            <h3 class="movie-title">Corra!</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/bastardos.png" alt="Bastardos Inglórios">
+                            <span class="card-year">2009</span>
+                            <span class="card-rating"><i class="fa-regular fa-star"></i> 4.3</span>
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-18">A18</span>
+                            <h3 class="movie-title">Bastardos Inglórios</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem judaica,
+                                com o objetivo de realizar uma missão suicida contra os alemães. O objetivo é matar o
+                                maior número possível de nazistas, da forma mais cruel possível.
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/coach-carter.png" alt="Coach Carter">
+                            <span class="card-year">2005</span>
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-14">A14</span>
+                            <h3 class="movie-title">Coach Carter</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem judaica,
+                                com o objetivo de realizar uma missão suicida contra os alemães. O objetivo é matar o
+                                maior número possível de nazistas...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/lalaland.png" alt="La La Land">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-l">AL</span>
+                            <h3 class="movie-title">La La Land</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/ralph.png" alt="Detona Ralph">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-l">AL</span>
+                            <h3 class="movie-title">Detona Ralph</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/demon-slayer.png" alt="Demon Slayer">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-18">A18</span>
+                            <h3 class="movie-title">Demon Slayer: O Filme</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/guardioes.png" alt="Guardiões da Galáxia 3">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-14">A14</span>
+                            <h3 class="movie-title">Guardiões da Galáxia 3</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/avioes.png" alt="Aviões">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-l">AL</span>
+                            <h3 class="movie-title">Aviões</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="explore-card">
+                        <div class="card-media">
+                            <img src="img-filmes/corra.png" alt="Corra!">
+                        </div>
+                        <div class="card-content">
+                            <span class="age-badge age-16">A16</span>
+                            <h3 class="movie-title">Corra!</h3>
+                            <p class="movie-description">
+                                Em Bastardos Inglórios, na Segunda Guerra Mundial, a França está ocupada pelos nazistas.
+                                O tenente Aldo Raine é o encarregado de reunir um pelotão de soldados de origem
+                                judaica...
+                            </p>
+                        </div>
+                        <div class="card-actions">
+                            <button aria-label="Favoritar"><i class="fa-regular fa-heart"></i></button>
+                            <button aria-label="Adicionar à lista"><i class="fa-regular fa-bookmark"></i></button>
+                            <button aria-label="Remover"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </article>
+
+                </section>
+
+                <aside class="filters-sidebar">
+                    <div class="filter-header">
+                        <h2>EXPLORE</h2>
+                        <p>ENCONTRE O MELHOR FILME PARA VOCÊ</p>
+                        <div class="filter-actions-btn">
+                            <button class="btn-filter-apply"><i class="fa-solid fa-filter"></i> aplicar</button>
+                            <button class="btn-filter-reset"><i class="fa-solid fa-rotate"></i> apagar</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-box">
+                        <div class="filter-group">
+                            <label for="filtro-genero">Gênero</label>
+                            <select id="filtro-genero">
+                                <option value=""></option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filtro-classificacao">Classificação indicativa</label>
+                            <select id="filtro-classificacao">
+                                <option value=""></option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filtro-lancamento">Lançamento</label>
+                            <select id="filtro-lancamento">
+                                <option value=""></option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filtro-nota">Nota</label>
+                            <select id="filtro-nota">
+                                <option value=""></option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filtro-streaming">Streaming</label>
+                            <select id="filtro-streaming">
+                                <option value=""></option>
+                            </select>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <footer class="site-footer">
+                <img class="footer-logo" src="logos/logo-branca.png" alt="Logo Branca">
+
+                <div class="footer-col">
+                    <a href="#">Menu inicial</a>
+                    <a href="#">Social</a>
+                    <a href="#">Explore</a>
+                    <a href="#">Favoritos</a>
+                    <a href="#">Avaliações</a>
+                    <a href="#">Minhas coleções</a>
+                </div>
+
+                <div class="footer-col">
+                    <a href="#">Planos &amp; Assinaturas</a>
+                    <a href="#">Configurações</a>
+                    <a href="#">Perfil</a>
+                    <a href="#">Notificações</a>
+                    <a href="#" class="footer-logout">Sair</a>
+                </div>
+
+                <div class="footer-col footer-team">
+                    <h3>PROJETO INTEGRADOR</h3>
+                    <div class="footer-team-body">
+                        <ul class="footer-team-list">
+                            <li>Grupo por:</li>
+                            <li>Rafael Rossi</li>
+                            <li>Vitor Nunes</li>
+                            <li>Rhian Victor</li>
+                            <li>Matheus Gonçalvez</li>
+                        </ul>
+                        <img class="footer-2DSB" src="logos/2DSB.png" alt="Logo 2DSB">
+                    </div>
+                </div>
+
+                <div class="footer-col footer-contact">
+                    <h3>Entre em Contato:</h3>
+                    <div class="footer-icons">
+                        <a href="#" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+                        <a href="#" aria-label="E-mail"><i class="fa-regular fa-envelope"></i></a>
+                        <a href="#" aria-label="Telegram"><i class="fa-brands fa-telegram"></i></a>
+                    </div>
+                    <h3>Siga Nossas Redes Sociais</h3>
+                    <div class="footer-icons">
+                        <a href="#" aria-label="X"><i class="fa-brands fa-x-twitter"></i></a>
+                        <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                        <a href="#" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
+                        <a href="#" aria-label="Discord"><i class="fa-brands fa-discord"></i></a>
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+    <div class="settings-overlay" id="settingsModal">
+        <div class="settings-container">
+            <aside class="settings-sidebar">
+                <button class="settings-tab active">Conta</button>
+                <button class="settings-tab">Privacidade</button>
+                <button class="settings-tab">Informações</button>
+                <button class="settings-tab">Segurança</button>
+                <button class="settings-tab">Ajuda</button>
+                <button class="settings-tab btn-sair">Sair</button>
+            </aside>
+
+            <div class="settings-content">
+                <header class="settings-header">
+                    <h2>Informações da Conta</h2>
+                    <button class="close-modal-btn" id="closeSettingsBtn"><i class="fa-solid fa-xmark"></i></button>
+                </header>
+
+                <div class="settings-body">
+                    <div class="settings-col">
+                        <div class="info-group">
+                            <label>Nome:</label>
+                            <span>Jorel</span>
+                        </div>
+                        <div class="info-group">
+                            <label>CPF:</label>
+                            <span>***.***.***-99 <i class="fa-regular fa-eye toggle-icon"></i></span>
+                        </div>
+                        <div class="info-group">
+                            <label>Senha:</label>
+                            <span>******** <i class="fa-regular fa-eye toggle-icon"></i></span>
+                        </div>
+                        <div class="info-group">
+                            <label>Perfil:</label>
+                            <span>Privado</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Gênero:</label>
+                            <span>Masculino</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-col">
+                        <div class="info-group">
+                            <label>E-mail:</label>
+                            <span>jorel.oficial.br@gmail.com</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Tipo de Usuário:</label>
+                            <span>Comum</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Data de Cadastro:</label>
+                            <span>06/07/2026</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Data de Nascimento:</label>
+                            <span>09/08/1995</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Tema:</label>
+                            <div class="theme-toggle">
+                                <span>Escuro</span>
+                                <span class="active">Claro</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</body>
+
+</html>

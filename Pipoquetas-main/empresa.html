@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipoquetas — Painel da Empresa</title>
+    <link rel="stylesheet" href="css/estilo.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-btn" id="dropbtn"><i class="fa-solid fa-bars"></i></button>
+            <h1 class="logo">Pipoquetas</h1>
+        </div>
+
+        <div class="search-bar">
+            <input type="search" id="busca" name="q" placeholder="Procure seus filmes cadastrados">
+            <button class="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+
+        <div class="header-right">
+            <i class="fa-regular fa-bell"></i>
+
+            <div class="user-avatar" id="avatarBtn">
+                <img src="Avatar.png" alt="Avatar">
+            </div>
+
+            <div class="user-dropdown" id="userDropdown">
+                <div class="dropdown-header">
+                    <img src="Avatar.png" alt="Avatar" class="dropdown-avatar">
+                    <span>StreamFlix Distribuidora</span>
+                </div>
+
+                <div class="dropdown-body">
+                    <div class="dropdown-col">
+                        <a href="#">Ver/Editar perfil</a>
+                        <a href="#">Dados da empresa</a>
+                    </div>
+
+                    <div class="dropdown-divider"></div>
+
+                    <div class="dropdown-col">
+                        <a href="#">Feedback/ Sugestões</a>
+                        <a href="#" class="logout-link">Sair/Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <a href="#" class="active"><i class="fa-solid fa-gauge"></i> <span>Painel</span></a>
+                <a href="#meus-filmes"><i class="fa-solid fa-film"></i> <span>Meus Filmes</span></a>
+                <a href="#desempenho"><i class="fa-solid fa-chart-simple"></i> <span>Desempenho</span></a>
+            </div>
+            <div class="sidebar-bottom">
+                <a href="#" id="settingsBtn"><i class="fa-solid fa-gear"></i> <span>Configurações</span></a>
+                <a href="index.html"><i class="fa-solid fa-right-from-bracket"></i> <span>Sair</span></a>
+            </div>
+        </aside>
+
+        <div class="overlay" id="sidebarOverlay"></div>
+
+        <main class="content">
+
+            <div class="page-header">
+                <h1>Painel da Empresa</h1>
+                <p>Cadastre e acompanhe o desempenho dos filmes da sua distribuidora.</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statTotalFilmes">0</div>
+                    <div class="stat-label">Filmes cadastrados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statPendentes">0</div>
+                    <div class="stat-label">Aguardando aprovação</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statVisualizacoes">0</div>
+                    <div class="stat-label">Visualizações totais</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statAvaliacaoMedia">0.0</div>
+                    <div class="stat-label">Avaliação média</div>
+                </div>
+            </div>
+
+            <!-- Meus filmes: cadastrar / editar / remover -->
+            <section class="admin-panel" id="meus-filmes">
+                <div class="admin-panel-header">
+                    <h2>Meus filmes<span class="count-badge" id="countMeusFilmes">0</span></h2>
+                    <button class="btn-primary" id="btnAdicionarFilme"><i class="fa-solid fa-plus"></i> Cadastrar filme</button>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Filme</th>
+                            <th>Ano</th>
+                            <th>Plataforma</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyMeusFilmes"></tbody>
+                </table>
+                <p class="empty-state" id="emptyMeusFilmes" style="display:none;">Você ainda não cadastrou nenhum filme.</p>
+            </section>
+
+            <!-- Estatísticas por filme -->
+            <section class="admin-panel" id="desempenho">
+                <div class="admin-panel-header">
+                    <h2>Desempenho por filme</h2>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Filme</th>
+                            <th>Visualizações</th>
+                            <th>Avaliações recebidas</th>
+                            <th>Nota média</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyDesempenho"></tbody>
+                </table>
+                <p class="empty-state" id="emptyDesempenho" style="display:none;">Sem dados de desempenho ainda.</p>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modal de cadastro/edição de filme -->
+    <div class="form-overlay" id="filmeFormOverlay">
+        <div class="form-container">
+            <h2 id="filmeFormTitulo">Cadastrar filme</h2>
+            <form id="filmeForm">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Título</label>
+                        <input type="text" id="campoTitulo" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ano</label>
+                        <input type="number" id="campoAno" min="1900" max="2100" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Classificação indicativa</label>
+                        <select id="campoClassificacao">
+                            <option value="L">Livre</option>
+                            <option value="10">10 anos</option>
+                            <option value="12">12 anos</option>
+                            <option value="14">14 anos</option>
+                            <option value="16">16 anos</option>
+                            <option value="18">18 anos</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Gênero(s)</label>
+                        <input type="text" id="campoGeneros" placeholder="Ex: Drama, Aventura">
+                    </div>
+                    <div class="form-group">
+                        <label>Plataforma</label>
+                        <input type="text" id="campoPlataforma" placeholder="Ex: HBO Max">
+                    </div>
+                    <div class="form-group">
+                        <label>Preço</label>
+                        <input type="text" id="campoPreco" placeholder="Ex: R$14,90">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Sinopse</label>
+                        <textarea id="campoSinopse"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Imagem (caminho do arquivo)</label>
+                        <input type="text" id="campoImagem" placeholder="img-filmes/nome-do-arquivo.png">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="btnCancelarFilme">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ---------- Dados de exemplo (placeholder até integrar com o backend) ----------
+        // No projeto final, "meusFilmesData" vem de um SELECT em Filme filtrado pela empresa logada.
+        let meusFilmesData = [
+            {
+                titulo: "Estrada Sem Volta", ano: "2025", classificacao: "14",
+                generos: ["Suspense"], plataforma: "StreamFlix", preco: "R$12,90",
+                sinopse: "Um motorista de aplicativo se vê perseguido após presenciar um crime.",
+                imagem: "img-filmes/placeholder.png", status: "pendente",
+                visualizacoes: 0, avaliacoes: 0, notaMedia: 0
+            },
+            {
+                titulo: "Refúgio", ano: "2024", classificacao: "L",
+                generos: ["Drama", "Família"], plataforma: "StreamFlix", preco: "R$9,90",
+                sinopse: "Uma família reconstrói a vida após perder tudo em uma enchente.",
+                imagem: "img-filmes/placeholder.png", status: "aprovado",
+                visualizacoes: 3420, avaliacoes: 87, notaMedia: 4.2
+            }
+        ];
+
+        // ---------- Renderização ----------
+        function renderMeusFilmes() {
+            const tbody = document.getElementById("tbodyMeusFilmes");
+            tbody.innerHTML = "";
+            meusFilmesData.forEach((f, index) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="cell-title"><img src="${f.imagem}" alt="${f.titulo}">${f.titulo}</td>
+                    <td>${f.ano}</td>
+                    <td>${f.plataforma || "—"}</td>
+                    <td><span class="badge badge-${f.status}">${f.status}</span></td>
+                    <td>
+                        <button class="action-btn editar" data-index="${index}" data-acao="editar-filme">Editar</button>
+                        <button class="action-btn remover" data-index="${index}" data-acao="remover-filme">Remover</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById("countMeusFilmes").textContent = meusFilmesData.length;
+            document.getElementById("statTotalFilmes").textContent = meusFilmesData.length;
+            document.getElementById("statPendentes").textContent = meusFilmesData.filter(f => f.status === "pendente").length;
+            document.getElementById("emptyMeusFilmes").style.display = meusFilmesData.length ? "none" : "block";
+
+            const totalVisualizacoes = meusFilmesData.reduce((soma, f) => soma + (f.visualizacoes || 0), 0);
+            document.getElementById("statVisualizacoes").textContent = totalVisualizacoes;
+
+            const filmesComNota = meusFilmesData.filter(f => f.avaliacoes > 0);
+            const mediaGeral = filmesComNota.length
+                ? (filmesComNota.reduce((soma, f) => soma + f.notaMedia, 0) / filmesComNota.length).toFixed(1)
+                : "0.0";
+            document.getElementById("statAvaliacaoMedia").textContent = mediaGeral;
+        }
+
+        function renderDesempenho() {
+            const tbody = document.getElementById("tbodyDesempenho");
+            tbody.innerHTML = "";
+            meusFilmesData.filter(f => f.status === "aprovado").forEach(f => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${f.titulo}</td>
+                    <td>${f.visualizacoes}</td>
+                    <td>${f.avaliacoes}</td>
+                    <td><i class="fa-solid fa-star"></i> ${f.notaMedia.toFixed(1)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            const aprovados = meusFilmesData.filter(f => f.status === "aprovado").length;
+            document.getElementById("emptyDesempenho").style.display = aprovados ? "none" : "block";
+        }
+
+        // ---------- Ações (editar/remover) ----------
+        document.addEventListener("click", (e) => {
+            const btn = e.target.closest("button[data-acao]");
+            if (!btn) return;
+            const acao = btn.dataset.acao;
+            const index = btn.dataset.index !== undefined ? Number(btn.dataset.index) : null;
+
+            if (acao === "remover-filme") {
+                meusFilmesData.splice(index, 1);
+                renderMeusFilmes();
+                renderDesempenho();
+            }
+            if (acao === "editar-filme") {
+                abrirFormularioFilme(meusFilmesData[index], index);
+            }
+        });
+
+        // ---------- Modal de cadastrar/editar filme ----------
+        const filmeFormOverlay = document.getElementById("filmeFormOverlay");
+        const filmeForm = document.getElementById("filmeForm");
+        let indexEmEdicao = null;
+
+        function abrirFormularioFilme(filme, index) {
+            indexEmEdicao = index;
+            document.getElementById("filmeFormTitulo").textContent = filme ? "Editar filme" : "Cadastrar filme";
+            document.getElementById("campoTitulo").value = filme ? filme.titulo : "";
+            document.getElementById("campoAno").value = filme ? filme.ano : "";
+            document.getElementById("campoClassificacao").value = filme ? filme.classificacao : "L";
+            document.getElementById("campoGeneros").value = filme ? (filme.generos || []).join(", ") : "";
+            document.getElementById("campoPlataforma").value = filme ? filme.plataforma : "";
+            document.getElementById("campoPreco").value = filme ? filme.preco : "";
+            document.getElementById("campoSinopse").value = filme ? filme.sinopse : "";
+            document.getElementById("campoImagem").value = filme ? filme.imagem : "";
+            filmeFormOverlay.classList.add("active");
+        }
+
+        document.getElementById("btnAdicionarFilme").addEventListener("click", () => abrirFormularioFilme(null, null));
+        document.getElementById("btnCancelarFilme").addEventListener("click", () => filmeFormOverlay.classList.remove("active"));
+        filmeFormOverlay.addEventListener("click", (e) => {
+            if (e.target === filmeFormOverlay) filmeFormOverlay.classList.remove("active");
+        });
+
+        filmeForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const dadosFilme = {
+                titulo: document.getElementById("campoTitulo").value,
+                ano: document.getElementById("campoAno").value,
+                classificacao: document.getElementById("campoClassificacao").value,
+                generos: document.getElementById("campoGeneros").value.split(",").map(g => g.trim()).filter(Boolean),
+                plataforma: document.getElementById("campoPlataforma").value,
+                preco: document.getElementById("campoPreco").value,
+                sinopse: document.getElementById("campoSinopse").value,
+                imagem: document.getElementById("campoImagem").value || "img-filmes/placeholder.png"
+            };
+
+            if (indexEmEdicao !== null) {
+                // Edição: mantém status/estatísticas existentes, atualiza só os dados do filme.
+                // Na prática, editar um filme já aprovado normalmente volta pra "pendente" até o admin revisar de novo.
+                meusFilmesData[indexEmEdicao] = {
+                    ...meusFilmesData[indexEmEdicao],
+                    ...dadosFilme
+                };
+            } else {
+                meusFilmesData.push({
+                    ...dadosFilme,
+                    status: "pendente",
+                    visualizacoes: 0,
+                    avaliacoes: 0,
+                    notaMedia: 0
+                });
+            }
+
+            filmeFormOverlay.classList.remove("active");
+            renderMeusFilmes();
+            renderDesempenho();
+        });
+
+        // ---------- Sidebar e avatar (mesmo comportamento do index.html) ----------
+        const dropbtn = document.getElementById("dropbtn");
+        const sidebar = document.getElementById("sidebar");
+        const sidebarOverlay = document.getElementById("sidebarOverlay");
+
+        function toggleSidebar() {
+            sidebar.classList.toggle("expanded");
+            sidebarOverlay.classList.toggle("active");
+        }
+
+        dropbtn.addEventListener("click", toggleSidebar);
+        sidebarOverlay.addEventListener("click", toggleSidebar);
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const avatarBtn = document.getElementById("avatarBtn");
+            const userDropdown = document.getElementById("userDropdown");
+
+            if (avatarBtn && userDropdown) {
+                avatarBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle("active");
+                });
+
+                document.addEventListener("click", (e) => {
+                    if (!userDropdown.contains(e.target) && !avatarBtn.contains(e.target)) {
+                        userDropdown.classList.remove("active");
+                    }
+                });
+            }
+        });
+
+        // ---------- Inicialização ----------
+        renderMeusFilmes();
+        renderDesempenho();
+    </script>
+</body>
+
+</html>
