@@ -1,31 +1,30 @@
-// login.js — toggle de senha + autenticação por perfil.
+// login.js (jQuery) — toggle de senha + autenticação por perfil.
 // Perfis de demonstração (ajustar ao cadastro real): usuario / administrador / empresa (senha 123456).
-// Depende apenas do DOM de login.html.
-document.addEventListener("DOMContentLoaded", () => {
-  const togglePassword = document.getElementById("togglePassword");
-  const passwordInput = document.getElementById("password");
-  const loginForm = document.getElementById("loginForm");
-  const mensagem = document.getElementById("mensagem");
+// Depende de: jQuery e do DOM de login.html.
+$(function () {
+  var $togglePassword = $("#togglePassword");
+  var $passwordInput = $("#password");
+  var $loginForm = $("#loginForm");
+  var $mensagem = $("#mensagem");
 
-  if (togglePassword && passwordInput) {
-    togglePassword.addEventListener("click", () => {
-      const isHidden = passwordInput.type === "password";
-      passwordInput.type = isHidden ? "text" : "password";
-      togglePassword.classList.toggle("fa-eye");
-      togglePassword.classList.toggle("fa-eye-slash");
+  if ($togglePassword.length && $passwordInput.length) {
+    $togglePassword.on("click", function () {
+      var isHidden = $passwordInput.attr("type") === "password";
+      $passwordInput.attr("type", isHidden ? "text" : "password");
+      $(this).toggleClass("fa-eye fa-eye-slash");
     });
   }
 
-  if (loginForm) {
-    loginForm.addEventListener("submit", (e) => {
+  if ($loginForm.length) {
+    $loginForm.on("submit", function (e) {
       e.preventDefault();
-      const usuario = document.getElementById("email").value.trim().toLowerCase();
-      const senha = passwordInput.value;
+      var usuario = $.trim($("#email").val()).toLowerCase();
+      var senha = $passwordInput.val();
 
       if (usuario === "usuario" && senha === "123456") window.location.href = "index.html";
       else if (usuario === "administrador" && senha === "123456") window.location.href = "admin.html";
       else if (usuario === "empresa" && senha === "123456") window.location.href = "empresa.html";
-      else if (mensagem) mensagem.textContent = "Usuário ou senha não conferem.";
+      else if ($mensagem.length) $mensagem.text("Usuário ou senha não conferem.");
     });
   }
 });

@@ -1,109 +1,112 @@
-// app.js — comportamentos compartilhados (header, sidebar, dropdown, settings, tema, busca).
+// app.js (jQuery) — comportamentos compartilhados (header, sidebar, dropdown, settings, tema, busca).
 // Incluído em todas as páginas. Cada bloco verifica a existência dos elementos.
-(function () {
+// Depende de: jQuery 3.7.1 (carregado antes deste arquivo em todos os HTML).
+$(function () {
   // ---------- Sidebar ----------
-  const sidebar = document.getElementById("sidebar");
-  const dropbtn = document.getElementById("dropbtn") || document.getElementById("menuToggle");
-  const sidebarOverlay = document.getElementById("sidebarOverlay");
+  var $sidebar = $("#sidebar");
+  var $dropbtn = $("#dropbtn, #menuToggle");
+  var $sidebarOverlay = $("#sidebarOverlay");
 
   function toggleSidebar() {
-    if (!sidebar) return;
-    sidebar.classList.toggle("expanded");
-    if (sidebarOverlay) sidebarOverlay.classList.toggle("active");
+    if (!$sidebar.length) return;
+    $sidebar.toggleClass("expanded");
+    $sidebarOverlay.toggleClass("active");
   }
 
-  if (dropbtn) dropbtn.addEventListener("click", toggleSidebar);
-  if (sidebarOverlay) sidebarOverlay.addEventListener("click", toggleSidebar);
+  $dropbtn.on("click", toggleSidebar);
+  $sidebarOverlay.on("click", toggleSidebar);
 
   // ---------- Dropdown do avatar ----------
-  const avatarBtn = document.getElementById("avatarBtn");
-  const userDropdown = document.getElementById("userDropdown");
+  var $avatarBtn = $("#avatarBtn");
+  var $userDropdown = $("#userDropdown");
 
-  if (avatarBtn && userDropdown) {
-    avatarBtn.addEventListener("click", (e) => {
+  if ($avatarBtn.length && $userDropdown.length) {
+    $avatarBtn.on("click", function (e) {
       e.stopPropagation();
-      userDropdown.classList.toggle("active");
+      $userDropdown.toggleClass("active");
     });
-    document.addEventListener("click", (e) => {
-      if (!userDropdown.contains(e.target) && !avatarBtn.contains(e.target)) {
-        userDropdown.classList.remove("active");
+    $(document).on("click", function (e) {
+      if (!$(e.target).closest("#userDropdown, #avatarBtn").length) {
+        $userDropdown.removeClass("active");
       }
     });
   }
 
   // ---------- Modal de configurações ----------
-  const settingsModal = document.getElementById("settingsModal");
-  const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+  var $settingsModal = $("#settingsModal");
+  var $closeSettingsBtn = $("#closeSettingsBtn");
 
-  document.querySelectorAll(".sidebar a, .sidebar-nav a").forEach((link) => {
-    if (link.textContent.includes("Configurações") || link.textContent.includes("Ajustes")) {
-      link.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (settingsModal) settingsModal.classList.add("active");
-        if (sidebar) sidebar.classList.remove("expanded");
-        if (sidebarOverlay) sidebarOverlay.classList.remove("active");
-      });
-    }
-  });
+  $(".sidebar a, .sidebar-nav a")
+    .filter(function () {
+      var txt = $(this).text();
+      return txt.indexOf("Configurações") !== -1 || txt.indexOf("Ajustes") !== -1;
+    })
+    .on("click", function (e) {
+      e.preventDefault();
+      $settingsModal.addClass("active");
+      $sidebar.removeClass("expanded");
+      $sidebarOverlay.removeClass("active");
+    });
 
-  if (closeSettingsBtn && settingsModal) {
-    closeSettingsBtn.addEventListener("click", () => settingsModal.classList.remove("active"));
-    settingsModal.addEventListener("click", (e) => {
-      if (e.target === settingsModal) settingsModal.classList.remove("active");
+  if ($closeSettingsBtn.length && $settingsModal.length) {
+    $closeSettingsBtn.on("click", function () {
+      $settingsModal.removeClass("active");
+    });
+    $settingsModal.on("click", function (e) {
+      if (e.target === this) {
+        $(this).removeClass("active");
+      }
     });
   }
 
   // Abas do modal (troca o título; conteúdo detalhado por aba fica para o backend)
-  const settingsTabs = document.querySelectorAll(".settings-tab:not(.btn-sair)");
-  const settingsTitle = document.querySelector(".settings-header h2");
-  settingsTabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      settingsTabs.forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
-      if (settingsTitle) {
-        const nomes = {
-          Conta: "Informações da Conta",
-          Privacidade: "Privacidade",
-          Informações: "Informações",
-          Segurança: "Segurança",
-          Ajuda: "Ajuda"
-        };
-        settingsTitle.textContent = nomes[tab.textContent.trim()] || tab.textContent.trim();
-      }
-    });
+  var $settingsTabs = $(".settings-tab:not(.btn-sair)");
+  var $settingsTitle = $(".settings-header h2");
+  $settingsTabs.on("click", function () {
+    var $tab = $(this);
+    $settingsTabs.removeClass("active");
+    $tab.addClass("active");
+    if ($settingsTitle.length) {
+      var nomes = {
+        Conta: "Informações da Conta",
+        Privacidade: "Privacidade",
+        Informações: "Informações",
+        Segurança: "Segurança",
+        Ajuda: "Ajuda"
+      };
+      var nome = $.trim($tab.text());
+      $settingsTitle.text(nomes[nome] || nome);
+    }
   });
 
   // ---------- Tema Escuro/Claro (substitui o antigo index_dark.html) ----------
-  const themeToggle = document.querySelector(".theme-toggle");
+  var $themeToggle = $(".theme-toggle");
   function aplicarTema(tema) {
-    document.body.dataset.theme = tema;
-    try { localStorage.setItem("pipoquetas-tema", tema); } catch (e) { /* sem storage */ }
-    if (themeToggle) {
-      themeToggle.querySelectorAll("span").forEach((s) => {
-        s.classList.toggle("active", s.textContent.trim().toLowerCase() === tema);
-      });
-    }
-  }
-  let temaSalvo = "claro";
-  try { temaSalvo = localStorage.getItem("pipoquetas-tema") || "claro"; } catch (e) { /* sem storage */ }
-  aplicarTema(temaSalvo);
-  if (themeToggle) {
-    themeToggle.querySelectorAll("span").forEach((s) => {
-      s.addEventListener("click", () => aplicarTema(s.textContent.trim().toLowerCase()));
+    $("body").attr("data-theme", tema);
+    try { localStorage.setItem("pipoquetas-tema", tema); } catch (err) { /* sem storage */ }
+    $themeToggle.find("span").each(function () {
+      $(this).toggleClass("active", $.trim($(this).text()).toLowerCase() === tema);
     });
   }
+  var temaSalvo = "claro";
+  try { temaSalvo = localStorage.getItem("pipoquetas-tema") || "claro"; } catch (err) { /* sem storage */ }
+  aplicarTema(temaSalvo);
+  $themeToggle.find("span").on("click", function () {
+    aplicarTema($.trim($(this).text()).toLowerCase());
+  });
 
   // ---------- Busca do header -> explore.html?q= ----------
-  document.querySelectorAll(".search-bar").forEach((bar) => {
-    const input = bar.querySelector("input");
-    const btn = bar.querySelector(".search-btn");
-    if (!input) return;
+  $(".search-bar").each(function () {
+    var $bar = $(this);
+    var $input = $bar.find("input");
+    var $btn = $bar.find(".search-btn");
+    if (!$input.length) return;
     function buscar() {
-      const q = input.value.trim();
+      var q = $.trim($input.val());
       if (!q) return;
       window.location.href = "explore.html?q=" + encodeURIComponent(q);
     }
-    if (btn) btn.addEventListener("click", buscar);
-    input.addEventListener("keydown", (e) => { if (e.key === "Enter") buscar(); });
+    $btn.on("click", buscar);
+    $input.on("keydown", function (e) { if (e.key === "Enter") buscar(); });
   });
-})();
+});
