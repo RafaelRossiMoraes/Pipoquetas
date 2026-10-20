@@ -1,0 +1,5 @@
+# banco de dados local (gerado na primeira execução)
+dados/pipoquetas.sqlite
+dados/pipoquetas.sqlite-*
+# arquivos temporários
+*.log
