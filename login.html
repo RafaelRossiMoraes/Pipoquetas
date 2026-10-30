@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pipoquetas - Entrar</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="css/login.css" />
+</head>
+<body>
+  <main class="login-container">
+    <div class="login-card">
+      <img src="assets/logos/logo-branca.png" alt="Pipoquetas">
+
+      <div class="perfil-tabs" id="perfilTabs">
+        <button type="button" class="perfil-tab active" data-perfil="usuario">Cliente</button>
+        <button type="button" class="perfil-tab" data-perfil="empresa">Empresa</button>
+        <button type="button" class="perfil-tab" data-perfil="administrador">Administrador</button>
+      </div>
+
+      <!-- ENTRAR -->
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">E-mail ou Usuário</label>
+          <input type="text" id="email" class="form-input" placeholder="seuemail@exemplo.com" required />
+        </div>
+        <div class="form-group">
+          <label for="password">Senha</label>
+          <div class="password-wrapper">
+            <input type="password" id="password" class="form-input" placeholder="••••••••" required />
+            <i class="fa-regular fa-eye toggle-password" id="togglePassword" title="Mostrar/Ocultar senha"></i>
+          </div>
+        </div>
+        <div class="form-options"><a href="#" class="forgot-password" id="linkEsqueci">Esqueceu a senha?</a></div>
+        <button type="submit" class="btn-login">Entrar</button>
+      </form>
+
+      <!-- CADASTRAR -->
+      <form id="cadastroForm" hidden>
+        <div class="form-group"><label for="cadNome">Nome</label><input type="text" id="cadNome" class="form-input" required /></div>
+        <div class="form-group"><label for="cadUsuario">Usuário</label><input type="text" id="cadUsuario" class="form-input" placeholder="ex: maria.silva" required /></div>
+        <div class="form-group"><label for="cadEmail">E-mail</label><input type="email" id="cadEmail" class="form-input" required /></div>
+        <div class="form-group campo-perfil so-usuario"><label for="cadNascimento">Data de nascimento (opcional)</label><input type="date" id="cadNascimento" class="form-input" /></div>
+        <div class="form-group campo-perfil so-empresa"><label for="cadCnpj">CNPJ</label><input type="text" id="cadCnpj" class="form-input" placeholder="00.000.000/0000-00" /></div>
+        <div class="form-group campo-perfil so-administrador"><label for="cadCodigo">Código de administrador</label><input type="password" id="cadCodigo" class="form-input" /></div>
+        <div class="form-group"><label for="cadSenha">Senha (mínimo 6 caracteres)</label><input type="password" id="cadSenha" class="form-input" required /></div>
+        <div class="form-group"><label for="cadSenha2">Repita a senha</label><input type="password" id="cadSenha2" class="form-input" required /></div>
+        <button type="submit" class="btn-login">Criar conta</button>
+      </form>
+
+      <!-- ESQUECI A SENHA: passo 1 (pedir código) e passo 2 (nova senha) -->
+      <form id="esqueciForm" hidden>
+        <div class="form-group"><label for="esqId">E-mail ou Usuário</label><input type="text" id="esqId" class="form-input" required /></div>
+        <button type="submit" class="btn-login">Enviar código</button>
+      </form>
+      <form id="redefinirForm" hidden>
+        <div id="codigoDemo" class="codigo-demo" hidden></div>
+        <div class="form-group"><label for="redCodigo">Código de 6 dígitos</label><input type="text" id="redCodigo" class="form-input" inputmode="numeric" maxlength="6" required /></div>
+        <div class="form-group"><label for="redSenha">Nova senha</label><input type="password" id="redSenha" class="form-input" required /></div>
+        <button type="submit" class="btn-login">Alterar senha</button>
+      </form>
+
+      <div id="mensagem" class="msg" role="status"></div>
+
+      <div class="login-footer">
+        <p id="rodapeLogin">Novo por aqui? <a href="#" id="linkCadastro">Cadastre-se agora</a>.</p>
+        <p id="rodapeVoltar" hidden><a href="#" id="linkVoltar">Voltar para entrar</a></p>
+        <p class="rodape-convidado"><a href="index.html">Continuar como convidado</a></p>
+        <p class="rodape-convidado"><a href="#" id="baixarClientes">Baixar clientes.json</a></p>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/jquery.min.js"></script>
+  <script src="js/dados-filmes.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>
