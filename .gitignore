@@ -1,0 +1,10 @@
+# banco de dados local (gerado na primeira execução)
+dados/pipoquetas.sqlite
+dados/pipoquetas.sqlite-*
+# arquivos temporários
+*.log
+# cache do driver de banco escolhido na inicialização
+.pipo_driver
+# imagens enviadas pelo painel (mantém apenas o marcador da pasta)
+assets/img-filmes/uploads/*
+!assets/img-filmes/uploads/.gitkeep

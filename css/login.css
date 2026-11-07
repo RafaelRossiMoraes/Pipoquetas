@@ -1,0 +1,214 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --bg: #050505;
+    --bg-panel: #0a0a0a;
+    --red: #8b1e22;
+    --red-light: #a8252a;
+    --text: #ffffff;
+    --text-muted: #9a9a9a;
+}
+
+body {
+    background-color: var(--bg);
+    background-image: linear-gradient(#A22424 4%, #511212 29%, var(--bg) 45%);
+    color: var(--text);
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    height: 70px;
+    display: flex;
+    align-items: center;
+    padding: 0 40px;
+}
+
+.login-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* Card inspirado no painel modal de Informações da Conta */
+.login-card {
+    width: fit-content;
+    background-color: #1C1A1A66;
+    border: 1px solid #EAEAEA;
+    border-radius: 16px;
+    padding: 40px 32px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+}
+
+.login-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 28px;
+    text-align: center;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #e0e0e0;
+}
+
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 40px 12px 16px;
+    border-radius: 8px;
+    border: 1px solid #EAEAEA;
+    background-color: #121212;
+    color: #fff;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus {
+    border-color: var(--red-light);
+}
+
+/* Ícone de ocultar/mostrar senha idêntico ao protótipo */
+.toggle-password {
+    position: absolute;
+    right: 14px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+.toggle-password:hover {
+    color: #ffffff;
+}
+
+.form-options {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 24px;
+}
+
+.forgot-password {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-decoration: none;
+}
+
+.forgot-password:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--red-light);
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-login:hover {
+    background-color: #c42d33;
+}
+
+.btn-login:active {
+    transform: scale(0.99);
+}
+
+.login-footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.login-footer a {
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.login-footer a:hover {
+    text-decoration: underline;
+}
+
+/* ---------- Abas de perfil, mensagens e cadastro ---------- */
+[hidden] { display: none !important; }
+
+.login-card { 
+    width: min(460px, 100%);
+    max-width: 100%;    
+}
+
+.login-card > img {
+    display: block;
+    width: min(100%, 440px);
+    max-height: 300px;
+    object-fit: contain;
+    margin: 0 auto 30px;
+}
+
+.perfil-tabs {
+    display: flex;
+    gap: 6px;
+    margin: 20px 0 24px;
+    padding: 4px;
+    border-radius: 10px;
+    background-color: #121212;
+    border: 1px solid #EAEAEA33;
+}
+
+.perfil-tab {
+    flex: 1;
+    padding: 9px 6px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.perfil-tab.active { background-color: var(--red-light); color: #ffffff; }
+
+.msg { margin-top: 16px; text-align: center; color: #ff6b6b; font-weight: 600; font-size: 0.9rem; }
+.msg.ok { color: #6fdc8c; }
+
+.codigo-demo {
+    margin-bottom: 20px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px dashed var(--red-light);
+    color: #ffffff;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.rodape-convidado { margin-top: 12px; }
