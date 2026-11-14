@@ -1,0 +1,1597 @@
+===============================================================================
+ANALISE_DE_SISTEMAS.txt
+PIPOQUETAS — Análise de sistemas
+===============================================================================
+
+Projeto ............: Pipoquetas 1.1
+Data da análise ....: 13/11/2026
+Tipo de documento ..: análise de requisitos, atores, regras de negócio, fluxos e
+                      arquitetura da aplicação efetivamente implementada
+
+Fontes verificadas .: páginas HTML da raiz;
+                      css/*.css;
+                      js/*.js (app, api, páginas, catálogo local);
+                      api/index.php, api/db.php, api/auth.php;
+                      api/rotas/*.php;
+                      dados/filmes.json e dados/pipoquetas.sqlite;
+                      servidor.ps1, servidor-router.php, INICIAR.bat;
+                      gerar_dados_filmes.py;
+                      readme.txt (confrontado com o código).
+
+Documentos irmãos .: README.md — visão geral, tecnologias, instalação e limitações;
+                      DOCUMENTACAO_BANCO_DE_DADOS.txt — esquema e dicionário do banco;
+                      DOCUMENTACAO_ARMAZENAMENTO.txt — onde cada dado é guardado.
+
+===============================================================================
+COMO LER ESTE DOCUMENTO
+===============================================================================
+
+Não existe, no repositório, um documento formal de requisitos, casos de uso ou
+arquitetura. Por isso, tudo o que está aqui foi reconstruído a partir do
+comportamento observável no código, nas chamadas de API e no banco de dados.
+
+As situações usadas nos requisitos têm o seguinte significado:
+
+  Implementado .......... o comportamento existe no código e foi localizado tanto
+                          na interface quanto no servidor (ou apenas no servidor,
+                          quando indicado).
+  Parcial ............... existe, mas com limitação funcional, dado fixo, falta de
+                          persistência ou ausência de uma das pontas (tela ou API).
+  Apenas visual ......... a tela existe, mas não há regra de negócio real por trás.
+  Não implementado ...... não existe no código atual.
+
+Quando um item depende de serviço externo, isso é dito no próprio requisito. Não
+foram presumidas funcionalidades a partir de nomes de arquivos, comentários antigos
+ou do readme.txt: o código foi tratado como fonte de verdade.
+
+A lista completa de lacunas funcionais e de segurança está no README.md (seções 3.6,
+8.4 e 8.5). Este documento concentra-se em requisitos, regras, fluxos e arquitetura,
+sem repetir o dicionário de dados nem o guia de instalação.
+
+
+===============================================================================
+1. VISÃO GERAL DO SISTEMA
+===============================================================================
+
+1.1 Propósito
+
+A Pipoquetas é uma aplicação web de catálogo de filmes com recursos sociais. O
+sistema permite descobrir filmes, consultar detalhes, salvar títulos em listas
+pessoais, criar playlists, publicar avaliações e, para os perfis corporativos,
+cadastrar filmes e submetê-los à aprovação de um administrador.
+
+O sistema tem três frentes funcionais:
+
+  1. Vitrine e catálogo (home, Explore, detalhe do filme, busca e filtros).
+  2. Organização pessoal e opinião (favoritos, lista de interesses, playlists e
+     avaliações).
+  3. Curadoria (painel da empresa para enviar filmes; painel do administrador para
+     aprovar empresas, aprovar filmes e manter o catálogo).
+
+1.2 Escopo incluído
+
+  - Cadastro e login de clientes e empresas.
+  - Recuperação e alteração de senha.
+  - Catálogo estático de 75 filmes exibido pela interface.
+  - Catálogo persistido no banco, com status de aprovação.
+  - Favoritos e Lista de Interesses como playlists obrigatórias.
+  - Playlists personalizadas com privacidade e ícone.
+  - Avaliações de 1 a 5 estrelas com comentário.
+  - Painel da empresa com cadastro, edição, exclusão e métricas dos próprios filmes.
+  - Painel do administrador com aprovação de empresas e filmes e manutenção do
+    catálogo.
+  - Upload de imagem de filme.
+  - Tema claro/escuro, modal de configurações e busca no cabeçalho.
+  - API JSON própria, servida por PHP, com banco SQLite ou MySQL.
+  - Rotinas locais de servidor estático e geração offline do catálogo.
+
+1.3 Escopo excluído (não implementado)
+
+  - Cobrança, assinatura ou checkout. A página de planos é apenas visual.
+  - Envio de e-mail. A recuperação de senha devolve o código na resposta.
+  - Interface de notificações. Existem API e tabela, mas não há sino nem página.
+  - Moderação real de comentários no painel administrativo.
+  - Edição de perfil, troca de e-mail, foto de perfil ou exclusão de conta.
+  - Catálogo editável pela empresa nos campos de trailer, elenco, onde assistir,
+    relacionados, duração e direção.
+  - Controle de visualizações, curtidas, seguidores ou recomendações personalizadas.
+  - Painel de usuários para o administrador.
+  - Paginação no servidor, testes automatizados, logs persistentes e métricas.
+  - Implantação de produção com HTTPS, domínio, backup e monitoramento.
+
+1.4 Contexto de operação
+
+O sistema foi projetado para execução local, principalmente em Windows, com PHP 8 e
+o servidor embutido do PHP (`php -S`) na porta 8080. Também funciona sob Apache/XAMPP,
+mas, nesse caso, as proteções de arquivos do roteador local não são aplicadas.
+
+O uso típico é demonstrativo: um ou poucos usuários simultâneos, banco local e
+catálogo de pequeno porte (75 filmes). Não há infraestrutura de nuvem, fila,
+cache distribuído ou serviço de identidade.
+
+1.5 Critério de análise
+
+  - A interface foi lida página a página (HTML + JS) para identificar o que o
+    usuário consegue fazer.
+  - A API foi lida rota a rota para identificar o que o servidor realmente permite
+    e valida.
+  - O banco foi inspecionado para confirmar o que é persistido.
+  - Divergências entre tela, API, banco e documentação antiga foram registradas
+    explicitamente, em vez de corrigidas por suposição.
+
+
+===============================================================================
+2. ATORES, PAPÉIS E PERMISSÕES
+===============================================================================
+
+2.1 Atores humanos
+
+  +----------------+-----------------------------------------------------------+
+  | Ator           | Descrição                                                 |
+  +----------------+-----------------------------------------------------------+
+  | Visitante      | Pessoa sem sessão. Navega pela vitrine, pelo catálogo e   |
+  |                | pela página de detalhe, lê avaliações e pode se cadastrar |
+  |                | ou entrar.                                                |
+  | Cliente        | Conta com tipo = "usuario" e status = "ativo". Usa os     |
+  |                | recursos sociais: favoritos, listas, playlists e          |
+  |                | avaliações.                                               |
+  | Empresa        | Conta com tipo = "empresa". Nasce pendente; depois de     |
+  |                | aprovada, acessa o painel e gerencia apenas os próprios   |
+  |                | filmes.                                                   |
+  | Administrador  | Conta com tipo = "administrador". Aprova empresas e       |
+  |                | filmes e mantém o catálogo. Não é criada pelo formulário  |
+  |                | público.                                                  |
+  +----------------+-----------------------------------------------------------+
+
+Não há ator "moderador", "crítico" ou "suporte". As avaliações de exemplo são
+registros de usuários comuns criados na carga inicial.
+
+2.2 Atores-sistema e serviços externos
+
+  +------------------------+------------------------------------+-------------------+
+  | Sistema/serviço        | Participação                       | Obrigatório?      |
+  +------------------------+------------------------------------+-------------------+
+  | PHP + PDO              | Executa a API e acessa o banco     | Sim, para a API   |
+  | SQLite                 | Banco padrão em arquivo            | Um dos dois       |
+  | MySQL/MariaDB          | Banco alternativo (XAMPP)          | Um dos dois       |
+  | Servidor embutido PHP  | Serve páginas e API localmente     | Sim, no modo      |
+  |                        |                                    | recomendado       |
+  | Font Awesome (CDN)     | Ícones da interface                | Sim, para ícones  |
+  | YouTube (embed)        | Trailer na página do filme         | Só ao reproduzir  |
+  | image.tmdb.org         | Fotos de elenco e logos remotos    | Só nesses itens   |
+  | Sites de streaming     | Destino dos links "Onde Assistir"  | Só ao clicar      |
+  | TMDB API v3            | Geração offline do catálogo        | Não, apenas       |
+  |                        |                                    | manutenção        |
+  | Python + requests      | Executa o gerador de catálogo      | Não, apenas       |
+  |                        |                                    | manutenção        |
+  +------------------------+------------------------------------+-------------------+
+
+2.3 Matriz de permissões
+
+Legenda:
+  R  = leitura
+  W  = escrita
+  RW = leitura e escrita
+  —  = sem acesso
+  próprio = somente recursos dos quais o usuário é dono
+  (falha) = a operação funciona, mas sem o controle de autorização esperado
+
+  +-------------------------------+------------+------------+------------+------------+
+  | Recurso                       | Visitante  | Cliente    | Empresa    | Admin      |
+  +-------------------------------+------------+------------+------------+------------+
+  | Home, Explore e detalhe       | R          | R          | R          | R          |
+  | Busca e filtros               | R          | R          | R          | R          |
+  | Avaliações (leitura)          | R          | R          | R          | R          |
+  | Cadastro público              | W          | —          | —          | —          |
+  | Login/logout                  | W          | W          | W          | W          |
+  | Própria senha                 | —          | W          | W          | W          |
+  | Próprios dados de conta       | —          | R          | R          | R          |
+  | Favoritos/Lista de Interesses | —          | RW próprio | RW próprio | RW próprio |
+  | Playlists personalizadas      | —          | RW próprio | RW próprio | RW próprio |
+  | Playlist pública de terceiro  | —          | R (logado) | R (logado) | R (logado) |
+  | Avaliar filme                 | —          | W próprio  | W próprio  | W próprio  |
+  | Filmes (gestão)               | —          | —          | RW próprio | RW todos   |
+  | Upload de imagem              | —          | —          | W          | W          |
+  | Aprovar/recusar empresa       | —          | —          | —          | W          |
+  | Aprovar/recusar filme         | —          | —          | —          | W          |
+  | Notificações                  | —          | R próprio  | R próprio  | R próprio  |
+  | Exportar cadastros            | R (falha)  | R (falha)  | R (falha)  | R (falha)  |
+  | Importar cadastros            | W (falha)  | W (falha)  | W (falha)  | W (falha)  |
+  +-------------------------------+------------+------------+------------+------------+
+
+Duas linhas exigem destaque porque contrariam a intenção aparente do sistema:
+
+  - `GET /api/clientes/export` não exige autenticação e devolve todos os usuários
+    (sem senha). Qualquer visitante que conheça a rota consegue baixar os cadastros.
+  - `POST /api/clientes/importar` também não exige autenticação e insere contas.
+
+Essas duas rotas são usadas pela tela de login (botão de download e migração de
+contas antigas do navegador), mas a ausência de autenticação é uma falha real, não
+uma permissão intencional documentada.
+
+2.4 Como a autorização é aplicada
+
+A API concentra a decisão de acesso em `api/auth.php`:
+
+  - `pipo_token()` lê o cabeçalho `X-Pipoquetas-Token` (ou `?token=`).
+  - `pipo_usuario()` faz JOIN entre `sessoes` e `usuarios`, confere a expiração e
+    apaga a sessão vencida.
+  - `pipo_exigir()` devolve 401 quando não há sessão e 403 quando o tipo não está
+    entre os permitidos.
+  - Nas rotas de playlist e filme, além do tipo, há verificação de propriedade:
+    `usuario_id` da playlist e `empresa_id` do filme.
+
+A interface também esconde botões e redireciona páginas, mas isso é apenas
+conveniência. O servidor não confia no estado da tela:
+
+  - `js/app.js` redireciona `admin.html` e `empresa.html` para o login quando o
+    tipo não corresponde; a API repete a checagem.
+  - O formulário de avaliação é escondido para visitantes, mas o POST também exige
+    sessão.
+  - Os botões de favorito/lista avisam para entrar, mas o POST devolve 401 se não
+    houver token.
+
+Exceções e assimetrias confirmadas:
+
+  - A API permite que uma conta de empresa use favoritos, playlists e avaliações,
+    embora o painel da empresa não ofereça atalhos para isso.
+  - As playlists obrigatórias não podem ser excluídas, mas a API permite alterar
+    nome, descrição, ícone e privacidade; a interface esconde a edição.
+  - O painel administrativo só lista empresas com status `pendente`. Uma empresa
+    recusada desaparece da lista e não pode ser aprovada pela interface.
+  - A remoção de comentário no painel administrativo altera apenas um vetor em
+    memória (`comentariosData`, em `js/admin.js`); não há chamada à API.
+
+2.5 Ciclo de vida das contas
+
+  Cliente
+    cadastro -> status "ativo" -> login imediato -> uso normal.
+    Não há suspensão, exclusão ou alteração de status pela interface.
+
+  Empresa
+    cadastro -> status "pendente" (sem login)
+             -> administrador aprova -> "ativo" (login liberado)
+             -> administrador recusa -> "recusado" (login bloqueado)
+    Não há fluxo de reenvio, recurso ou reativação pela interface.
+
+  Administrador
+    criado pela carga inicial ou por procedimento interno no banco.
+    O formulário público rejeita explicitamente o tipo "administrador".
+    Não há promoção de usuário pela interface.
+
+2.6 Ciclo de vida dos filmes
+
+  Carga inicial ......... status "aprovado".
+  Admin cadastra ........ status "aprovado", sem empresa.
+  Empresa cadastra ...... status "pendente".
+  Empresa edita ......... volta para "pendente", inclusive se já estava aprovado.
+  Admin edita ........... mantém o status atual.
+  Admin aprova .......... "aprovado".
+  Admin recusa .......... "recusado".
+  Exclusão .............. remove o registro; itens de playlist e avaliações caem
+                          por cascata; o arquivo de imagem não é apagado.
+
+O catálogo público da API (`/api/filmes/catalogo`) só devolve `aprovado`. O painel
+da empresa mostra todos os filmes dela, em qualquer status. O painel do
+administrador lista todos os filmes, mas a aba "Catálogo" filtra apenas os aprovados.
+
+
+===============================================================================
+3. REQUISITOS FUNCIONAIS
+===============================================================================
+
+Os requisitos estão agrupados por domínio. Cada item traz a situação e a evidência
+principal no código.
+
+-------------------------------------------------------------------------------
+3.1 Acesso, conta e sessão
+-------------------------------------------------------------------------------
+
+RF01 — Cadastrar cliente
+  O visitante informa nome, usuário, e-mail, senha e, opcionalmente, nascimento.
+  A conta é criada com tipo "usuario" e status "ativo"; o login é feito na hora.
+  Situação .....: Implementado
+  Evidência ....: POST /api/cadastro (api/rotas/auth.php); js/login.js;
+                  criação das duas playlists obrigatórias.
+
+RF02 — Cadastrar empresa
+  O visitante escolhe o perfil Empresa, informa CNPJ e os demais dados. O CNPJ é
+  validado por quantidade (14 dígitos) e formatado, sem validação de dígito
+  verificador. A conta nasce "pendente" e não recebe token.
+  Situação .....: Implementado
+  Evidência ....: POST /api/cadastro; retorno com mensagem de espera.
+
+RF03 — Login unificado
+  O usuário informa usuário ou e-mail e senha. O tipo é lido do banco e define o
+  destino: cliente -> index.html; empresa -> empresa.html; admin -> admin.html.
+  Situação .....: Implementado
+  Evidência ....: POST /api/login; constante PIPO_DESTINOS.
+
+RF04 — Bloquear login de conta não aprovada
+  Empresa pendente recebe 403 com aviso de aprovação; empresa recusada recebe 403
+  com aviso de recusa.
+  Situação .....: Implementado
+  Evidência ....: verificação de `status` em api/rotas/auth.php.
+
+RF05 — Encerrar sessão
+  O logout apaga a sessão no banco e o cliente remove o token do navegador.
+  Situação .....: Implementado
+  Evidência ....: POST /api/logout; `sair()` em js/app.js.
+
+RF06 — Manter sessão entre páginas
+  O token é persistido no navegador e enviado em todas as chamadas. A sessão dura
+  30 dias. O usuário é revalidado por GET /api/eu.
+  Situação .....: Implementado
+  Evidência ....: api/auth.php (PIPO_SESSAO_DIAS); js/api.js; js/app.js.
+
+RF07 — Recuperar senha
+  O usuário informa usuário ou e-mail; o sistema gera um código de 6 dígitos válido
+  por 15 minutos. Não há envio de e-mail: o código é devolvido na própria resposta
+  JSON e exibido na tela como "modo demonstração".
+  Situação .....: Parcial
+  Evidência ....: POST /api/esqueci-senha e /api/redefinir-senha.
+
+RF08 — Alterar a própria senha
+  Exige a senha atual, aceita nova senha com no mínimo 6 caracteres e encerra as
+  outras sessões do usuário, mantendo a atual.
+  Situação .....: Implementado
+  Evidência ....: POST /api/perfil/senha; aba Segurança em js/app.js.
+
+RF09 — Editar perfil
+  Não há endpoint nem formulário para alterar nome, e-mail, usuário, nascimento,
+  foto ou excluir a conta. O modal apenas exibe os dados.
+  Situação .....: Não implementado
+  Evidência ....: ausência de rota; painel "Conta" somente leitura.
+
+RF10 — Exportar cadastros
+  O botão "Baixar clientes.json" na tela de login baixa todos os usuários em JSON,
+  sem senha. A rota não exige autenticação.
+  Situação .....: Implementado (com falha de autorização)
+  Evidência ....: GET /api/clientes/export; `baixarClientesJson()` em js/api.js.
+
+RF11 — Importar contas legadas
+  Contas antigas guardadas em `localStorage` (`pipo_clientes`) são importadas uma
+  única vez para o banco, sem duplicar usuário/e-mail e sem sobrescrever contas
+  existentes. A rota também é pública. Contas administrativas não são importadas.
+  Situação .....: Implementado (com falha de autorização)
+  Evidência ....: POST /api/clientes/importar; `garantirMigracao()` em js/api.js.
+
+-------------------------------------------------------------------------------
+3.2 Catálogo, descoberta e detalhe
+-------------------------------------------------------------------------------
+
+RF12 — Home
+  Exibe hero com três slides (troca a cada 10 s), carrossel de categorias, dois
+  carrosséis de filmes (até 20 cards cada), faixa de plataformas e rodapé.
+  Situação .....: Implementado
+  Evidência ....: index.html; js/index.js; `filmesData` (js/dados-filmes.js).
+
+RF13 — Explore com filtros
+  Permite filtrar por gênero, classificação indicativa, ano, nota mínima e
+  plataforma, além de busca textual por título e sinopse. A lista é exibida em
+  lotes de 24 com "Carregar mais". O botão de remover apenas tira o card da tela.
+  Situação .....: Implementado
+  Evidência ....: explore.html; js/explore.js.
+
+RF14 — Página de detalhe
+  Exibe título, ano, duração, classificação, gêneros, sinopse, trailer do YouTube,
+  elenco, onde assistir, relacionados e avaliações. O filme é localizado por
+  `?id=<slug>` no catálogo local; se o id não existir, a página mostra o primeiro
+  filme do catálogo.
+  Situação .....: Implementado (com fallback silencioso)
+  Evidência ....: filme.html; js/filme.js.
+
+RF15 — Busca no cabeçalho
+  Envia o texto para `explore.html?q=...`; a busca é case-insensitive e considera
+  título + sinopse do catálogo local.
+  Situação .....: Implementado
+  Evidência ....: js/app.js (bloco `.search-bar`); js/explore.js.
+
+RF16 — Catálogo público da API
+  Devolve apenas filmes com status "aprovado", ordenados por título, com id, título,
+  ano, imagem, plataforma, nota, gêneros e classificação.
+  Situação .....: Implementado
+  Evidência ....: GET /api/filmes/catalogo (api/rotas/filmes.php).
+
+RF17 — Listar filmes nos painéis
+  O administrador recebe todos os filmes; a empresa recebe apenas os seus. A
+  consulta inclui nome da empresa, quantidade real de avaliações e média real.
+  Situação .....: Implementado
+  Evidência ....: GET /api/filmes; `pipo_rota_listar_filmes()`.
+
+RF18 — Cadastrar filme
+  Empresa cria filme como "pendente"; administrador cria como "aprovado" e sem
+  empresa. O id é um slug do título, com sufixo numérico em caso de colisão.
+  Situação .....: Implementado
+  Evidência ....: POST /api/filmes; `pipo_slug()`; `pipo_limpar_filme()`.
+
+RF19 — Editar filme
+  A empresa edita apenas os próprios filmes e qualquer edição volta o status para
+  "pendente". O administrador edita qualquer filme e mantém o status.
+  Situação .....: Implementado
+  Evidência ....: PUT /api/filmes/{id}; `pipo_rota_editar_filme()`.
+
+RF20 — Excluir filme
+  A empresa exclui apenas os próprios filmes; o administrador exclui qualquer um.
+  A exclusão remove, por cascata, itens de playlist e avaliações. A imagem enviada
+  permanece no disco.
+  Situação .....: Implementado
+  Evidência ....: DELETE /api/filmes/{id}; FKs ON DELETE CASCADE no banco.
+
+RF21 — Enviar imagem de filme
+  Recebe data URL base64, aceita JPG, PNG, WEBP e GIF, limita a 4 MB, confere o
+  conteúdo real com `getimagesizefromstring`, grava em
+  `assets/img-filmes/uploads/` e devolve o caminho.
+  Situação .....: Implementado
+  Evidência ....: POST /api/filmes/upload; `pipoEnviarImagem()` em js/app.js.
+
+RF22 — Editar metadados avançados do filme
+  Trailer, elenco, onde assistir, relacionados, duração e diretores não aparecem
+  nos formulários dos painéis. Esses campos só existem nos filmes da carga inicial
+  (trailer em 65 e duração em 69); diretores vêm do mapa `pipo_diretores()`.
+  Situação .....: Não implementado
+  Evidência ....: formulários de admin/empresa; `pipo_limpar_filme()` não os lê.
+
+RF23 — Métrica de visualizações
+  A API devolve `visualizacoes: 0` fixo para todos os filmes; não há contador.
+  Situação .....: Não implementado
+  Evidência ....: `pipo_filme_adm()` em api/rotas/filmes.php.
+
+RF24 — Preço do filme
+  O formulário da empresa possui campo de preço e o envia, mas o back-end não
+  persiste nem devolve o valor.
+  Situação .....: Parcial (campo sem efeito)
+  Evidência ....: js/empresa.js; `pipo_limpar_filme()` ignora `preco`.
+
+-------------------------------------------------------------------------------
+3.3 Favoritos, lista de interesses e playlists
+-------------------------------------------------------------------------------
+
+RF25 — Favoritar e desfavoritar
+  O botão de coração alterna o filme na playlist obrigatória "Favoritos". A ação
+  exige login e devolve o estado final e o total.
+  Situação .....: Implementado
+  Evidência ....: POST /api/favoritos/{filmeId}; js/explore.js.
+
+RF26 — Lista de interesses
+  O botão de bandeira alterna o filme na playlist obrigatória "Lista de Interesses"
+  ("Assistir Depois"), com a mesma regra de alternância.
+  Situação .....: Implementado
+  Evidência ....: POST /api/lista-interesses/{filmeId}.
+
+RF27 — Criar playlist
+  Nome é obrigatório (até 80 caracteres), descrição até 300, ícone restrito a uma
+  lista fixa e privacidade "publica" ou "privada" (padrão privada). Toda playlist
+  criada pela API é do tipo "personalizada".
+  Situação .....: Implementado
+  Evidência ....: POST /api/playlists; `pipo_limpar_playlist()`.
+
+RF28 — Editar playlist
+  Somente o dono pode alterar nome, descrição, ícone e privacidade. A API permite
+  editar também as playlists obrigatórias; a interface esconde essa opção.
+  Situação .....: Implementado (com assimetria de interface)
+  Evidência ....: PUT /api/playlists/{id}.
+
+RF29 — Excluir playlist
+  Somente o dono pode excluir. As playlists obrigatórias (Favoritos e Lista de
+  Interesses) são bloqueadas com mensagem específica.
+  Situação .....: Implementado
+  Evidência ....: DELETE /api/playlists/{id}.
+
+RF30 — Adicionar e remover filmes da playlist
+  Verifica se o filme existe, evita duplicidade e permite remover. A ordem é a de
+  inserção. O status de aprovação do filme não é verificado: a API aceita qualquer
+  id existente, inclusive filme pendente ou recusado.
+  Situação .....: Implementado (com validação incompleta)
+  Evidência ....: POST/DELETE /api/playlists/{id}/itens.
+
+RF31 — Abrir playlist
+  O dono abre qualquer playlist sua. Outro usuário autenticado abre apenas
+  playlist marcada como pública. Visitante não abre nenhuma playlist, nem pública.
+  Situação .....: Implementado (com restrição de acesso anônimo)
+  Evidência ....: GET /api/playlists/{id}; `pipo_exigir()` no início da rota.
+
+RF32 — Biblioteca de playlists
+  Lista as duas obrigatórias e as personalizadas, com total de filmes, ordenadas
+  por obrigatoriedade, tipo e nome.
+  Situação .....: Implementado
+  Evidência ....: GET /api/playlists; playlists.html; js/playlists.js.
+
+RF33 — Compartilhar playlist pública sem login
+  Não é possível: a rota exige sessão antes de verificar a privacidade.
+  Situação .....: Não implementado
+  Evidência ....: `pipo_exigir()` em `pipo_rota_playlists()`.
+
+-------------------------------------------------------------------------------
+3.4 Avaliações
+-------------------------------------------------------------------------------
+
+RF34 — Ler avaliações e média
+  Qualquer visitante lê a lista de avaliações do filme, a média (uma casa decimal)
+  e a quantidade. A lista vem em ordem decrescente de data.
+  Situação .....: Implementado
+  Evidência ....: GET /api/filmes/{id}/avaliacoes; js/filme.js.
+
+RF35 — Publicar ou atualizar avaliação
+  Exige login, nota inteira de 1 a 5 e comentário não vazio (até 2000 caracteres).
+  Só existe uma avaliação por usuário e filme; novo envio atualiza a existente e
+  atualiza a data. A média é recalculada na hora.
+  Situação .....: Implementado
+  Evidência ....: POST /api/filmes/{id}/avaliacoes; UNIQUE (filme_id, usuario_id).
+
+RF36 — Histórico de avaliações
+  A aba "Avaliações" do modal de configurações lista até 100 avaliações do usuário,
+  com capa, título, nota, texto e data.
+  Situação .....: Implementado
+  Evidência ....: GET /api/minhas-avaliacoes; js/app.js.
+
+RF37 — Excluir a própria avaliação
+  Não há rota DELETE; o usuário só pode substituir a avaliação por outra.
+  Situação .....: Não implementado
+  Evidência ....: api/rotas/avaliacoes.php.
+
+RF38 — Moderar avaliações
+  O painel do administrador exibe dois comentários fixos em memória. O botão
+  Remover apenas apaga o item da tela; não há listagem, persistência ou API.
+  Situação .....: Apenas visual
+  Evidência ....: js/admin.js (`comentariosData`).
+
+-------------------------------------------------------------------------------
+3.5 Painel da empresa
+-------------------------------------------------------------------------------
+
+RF39 — Indicadores da empresa
+  Mostra total de filmes, filmes pendentes, visualizações (sempre 0) e avaliação
+  média dos filmes que têm avaliação.
+  Situação .....: Parcial (visualizações não existem)
+  Evidência ....: empresa.html; js/empresa.js.
+
+RF40 — Meus Filmes
+  Lista somente os filmes da empresa logada, com imagem, ano, plataforma, status e
+  ações de editar/remover.
+  Situação .....: Implementado
+  Evidência ....: GET /api/filmes; `renderMeusFilmes()`.
+
+RF41 — Desempenho por filme
+  Para os filmes aprovados, mostra visualizações (0), quantidade real de avaliações
+  e média real.
+  Situação .....: Parcial
+  Evidência ....: `renderDesempenho()` em js/empresa.js.
+
+RF42 — Cadastrar e editar filme da empresa
+  Usa o mesmo formulário para criação e edição, com upload opcional. Cadastro e
+  edição entram como pendentes. O campo preço não tem efeito.
+  Situação .....: Implementado (preço sem efeito)
+  Evidência ....: js/empresa.js; POST/PUT /api/filmes.
+
+RF43 — Atalho "Cadastrar filme"
+  O menu do perfil e a URL `empresa.html?novo=1` abrem o formulário diretamente.
+  Situação .....: Implementado
+  Evidência ....: js/app.js; js/empresa.js.
+
+RF44 — Recursos sociais para empresa
+  Tecnicamente, a API permite que a conta de empresa use favoritos, playlists e
+  avaliações, pois essas rotas só exigem login. O painel não oferece esses atalhos.
+  Situação .....: Implementado no back-end (não exposto na interface)
+  Evidência ....: `pipo_exigir()` sem tipo nas rotas sociais.
+
+RF45 — Gerenciar a própria conta empresarial
+  Não há edição de dados cadastrais, troca de CNPJ, exclusão ou encerramento.
+  Situação .....: Não implementado
+  Evidência ....: ausência de rotas e telas.
+
+-------------------------------------------------------------------------------
+3.6 Painel do administrador
+-------------------------------------------------------------------------------
+
+RF46 — Indicadores administrativos
+  Mostra empresas pendentes, filmes pendentes, total do catálogo e total de
+  comentários (este último fixo em dois exemplos).
+  Situação .....: Parcial (comentários fictícios)
+  Evidência ....: admin.html; js/admin.js.
+
+RF47 — Aprovar ou recusar empresas
+  Lista empresas pendentes e altera o status para "ativo" ou "recusado". A rota
+  aceita qualquer segmento diferente de "aprovar" como recusa, sem validar o nome
+  da ação.
+  Situação .....: Implementado (validação frouxa)
+  Evidência ....: GET /api/admin/empresas; POST /api/admin/empresas/{id}/aprovar|
+                  recusar.
+
+RF48 — Aprovar ou recusar filmes
+  Altera o status de qualquer filme para "aprovado" ou "recusado". Também não
+  valida o nome da ação.
+  Situação .....: Implementado (validação frouxa)
+  Evidência ....: POST /api/admin/filmes/{id}/aprovar|recusar.
+
+RF49 — Manter o catálogo
+  Lista os filmes aprovados, permite editar, remover e adicionar filme diretamente
+  como aprovado e sem empresa.
+  Situação .....: Implementado
+  Evidência ....: js/admin.js; POST/PUT/DELETE /api/filmes.
+
+RF50 — Gerenciar usuários
+  Não há tela para listar, editar, suspender, excluir ou promover usuários.
+  Situação .....: Não implementado
+
+RF51 — Auditar ações administrativas
+  Não há registro de quem aprovou, recusou, editou ou excluiu, nem data/hora de
+  auditoria.
+  Situação .....: Não implementado
+
+-------------------------------------------------------------------------------
+3.7 Notificações, planos e recursos transversais
+-------------------------------------------------------------------------------
+
+RF52 — API de notificações
+  Lista notificações do usuário, marca uma como lida, marca todas como lidas e
+  informa o total de não lidas. O contador também vem em GET /api/eu.
+  Situação .....: Implementado no back-end
+  Evidência ....: api/rotas/notificacoes.php; `nao_lidas` em /api/eu.
+
+RF53 — Interface de notificações
+  Não existe página, sino, badge ou item de menu. O código de `#notifBadge` existe
+  em js/app.js, mas nenhum HTML possui esse elemento.
+  Situação .....: Não implementado
+  Evidência ....: busca por `notifBadge` e `notificacoes` nos HTML.
+
+RF54 — Planos PipoPlus+
+  A página mostra Bronze, Prata e Ouro; o clique grava o plano escolhido em
+  `localStorage` (`pipoquetas-plano`) e destaca o card. Não há preço real, cobrança,
+  tabela ou vínculo com a conta.
+  Situação .....: Apenas visual
+  Evidência ....: assinatura.html; js/index.js.
+
+RF55 — Tema claro/escuro
+  Alterna o atributo `data-theme` no body e persiste a escolha em `localStorage`
+  (`pipoquetas-tema`). O tema é aplicado em todas as páginas.
+  Situação .....: Implementado
+  Evidência ....: js/app.js; css/base.css.
+
+RF56 — Modal de configurações
+  Abas Conta (dados somente leitura), Privacidade (texto e link), Informações,
+  Segurança (troca de senha), Ajuda (link para readme.txt) e Avaliações (histórico).
+  Situação .....: Implementado
+  Evidência ....: js/app.js; `montarPainelConfiguracoes()`.
+
+RF57 — Servidor local com cache e proteção de arquivos
+  O roteador do servidor embutido serve estáticos com ETag, gzip e Cache-Control,
+  executa apenas `/api/index.php` e bloqueia `dados/`, dotfiles, `.sqlite`, `.bat`,
+  `.ps1`, `.py` e `.log`.
+  Situação .....: Implementado (apenas no modo PHP embutido)
+  Evidência ....: servidor-router.php; servidor.ps1.
+
+RF58 — Modo somente estático
+  Sem PHP, o servidor PowerShell serve as páginas e o catálogo, mas a API responde
+  503 e login, listas, avaliações e painéis ficam indisponíveis.
+  Situação .....: Implementado
+  Evidência ....: servidor.ps1 (bloco sem PHP).
+
+RF59 — Gerar catálogo a partir da TMDB
+  Script Python opcional lê a chave de `tmdb_chave.txt` ou da variável `TMDB_CHAVE`,
+  busca filmes, baixa pôsteres e grava `dados/filmes.json` e `js/dados-filmes.js`.
+  Não atualiza o banco.
+  Situação .....: Implementado (ferramenta offline)
+  Evidência ....: gerar_dados_filmes.py.
+
+RF60 — Testes automatizados
+  Não há testes de unidade, integração, API ou interface, nem script de CI.
+  Situação .....: Não implementado
+
+
+===============================================================================
+4. REQUISITOS NÃO FUNCIONAIS
+===============================================================================
+
+Os requisitos abaixo também foram reconstruídos. Onde não há medição, isso é dito;
+não foram inventados tempos, volumes ou metas formais.
+
+NFR01 — Desempenho percebido
+  O que existe:
+    - índices nas colunas de busca e junção;
+    - agregação de avaliações em uma única consulta nos painéis;
+    - carrosséis limitados a 20 cards e Explore em lotes de 24;
+    - cache de arquivos estáticos por ETag e Cache-Control (imagens por 7 dias,
+      CSS/JS/JSON por 5 minutos, HTML sem cache);
+    - gzip para arquivos textuais acima de 1 KB;
+    - cache do usuário em sessionStorage por 5 minutos;
+    - cache da escolha do driver de banco por 1 hora.
+  Situação: Parcial. Não há medição, paginação no servidor, cache de API ou
+  compressão de imagens. O catálogo pequeno (75 filmes) torna o custo aceitável
+  no uso local, mas não há garantia para volume maior.
+
+NFR02 — Usabilidade
+  Interface em português, navegação por sidebar, busca no cabeçalho, mensagens de
+  erro da API, estados vazios e tema claro/escuro. Há textos e dados de exemplo na
+  tela de configurações que são substituídos por JavaScript quando a conta existe.
+  Situação: Parcial. Não há onboarding, ajuda contextual, confirmação de e-mail ou
+  tratamento uniforme de erros (alguns painéis usam `alert()`).
+
+NFR03 — Compatibilidade e responsividade
+  HTML5, CSS próprio, jQuery 3.7.1, JavaScript com `URLSearchParams`, `FileReader`,
+  `localStorage` e `sessionStorage`. Layout com sidebar responsiva. Funciona em
+  navegadores modernos; não há suporte declarado a navegadores antigos.
+  Situação: Implementado para navegadores modernos. O backend exige PHP 8 com PDO.
+
+NFR04 — Segurança de autenticação
+  Senhas com `password_hash()` (bcrypt) e prefixo `bcrypt:`; compatibilidade com
+  hashes legados `cyrb53:`; token aleatório de 24 bytes; sessão validada no servidor
+  e expirada em 30 dias; troca de senha encerra as outras sessões.
+  Situação: Parcial. O token fica em `localStorage` (suscetível a XSS), não há
+  cookie HttpOnly, CSRF, rate limiting, bloqueio por tentativas, verificação de
+  e-mail ou segundo fator.
+
+NFR05 — Autorização
+  Verificação de tipo e de propriedade no servidor para filmes e playlists; rotas
+  administrativas restritas a `administrador`.
+  Situação: Parcial. Há duas rotas públicas que deveriam ser protegidas
+  (`/api/clientes/export` e `/api/clientes/importar`), validação frouxa das ações
+  de aprovação e nenhuma verificação de status do filme ao inserir em playlist.
+
+NFR06 — Privacidade e proteção de dados pessoais
+  O sistema guarda nome, usuário, e-mail, nascimento, CNPJ, hash de senha,
+  avaliações e listas. A exportação de cadastros é pública e não há política de
+  privacidade, consentimento, prazo de retenção, exclusão de conta ou porta de
+  atendimento ao titular.
+  Situação: Não conforme com uma operação real de LGPD. Aceitável apenas como
+  demonstração local, e ainda assim com risco de exposição.
+
+NFR07 — Integridade e consistência
+  Chaves primárias e estrangeiras nas relações principais, UNIQUE para usuário,
+  e-mail, item de playlist e avaliação por usuário/filme; `PRAGMA foreign_keys = ON`
+  no SQLite; exclusões em cascata para sessões, playlists, itens e avaliações.
+  Situação: Parcial. `filmes.empresa_id` não tem FK; não há transações explícitas;
+  não há CHECK para status, nota, tipo ou privacidade; a validação fica na API.
+
+NFR08 — Disponibilidade e recuperação
+  O banco SQLite é um arquivo local; WAL e `busy_timeout` reduzem bloqueios. A carga
+  inicial é idempotente e o banco pode ser recriado apagando o arquivo.
+  Situação: Parcial. Não há backup automático, replicação, health check, recuperação
+  de desastre ou tratamento global de exceções. Se o PHP não estiver disponível,
+  o modo estático mantém apenas a navegação.
+
+NFR09 — Portabilidade e implantação
+  Pode rodar com o servidor embutido do PHP (recomendado) ou Apache/XAMPP; SQLite
+  por padrão e MySQL opcional. Os scripts de inicialização são de Windows
+  (`INICIAR.bat` e `servidor.ps1`).
+  Situação: Parcial. O backend é portável, mas a automação é Windows-first e não
+  há contêiner, configuração por ambiente (`.env`) ou pipeline de implantação.
+
+NFR10 — Manutenibilidade
+  Código organizado por domínio em `api/rotas/*.php`, helpers claros, comentários
+  em português e CSS separado por página. Não há framework, ORM, build ou
+  dependência PHP externa.
+  Situação: Parcial. Há duplicação do catálogo em três lugares, regras de negócio
+  dentro das rotas, estados e textos mágicos, código legado/comentários
+  desatualizados (por exemplo, referências a `servidor.py`) e ausência de migrações
+  `ALTER TABLE`.
+
+NFR11 — Escalabilidade e concorrência
+  O desenho é de instância única, banco local e arquivos no disco. O servidor
+  embutido do PHP e o modo estático do PowerShell atendem requisições em um único
+  processo, sem workers configurados.
+  Situação: Não preparado para múltiplos usuários simultâneos em produção. Não há
+  fila, cache distribuído, storage de objetos ou separação de serviços.
+
+NFR12 — Observabilidade
+  Não há logs persistentes, métricas, rastreamento, painel de erros ou auditoria.
+  Erros de API são devolvidos em JSON e exibidos na tela; erros fatais do PHP
+  aparecem no console do servidor.
+  Situação: Não implementado.
+
+NFR13 — Acessibilidade
+  Há `lang="pt-BR"`, viewport, textos alternativos em imagens, rótulos ARIA em
+  botões e uso de elementos semânticos em parte das telas.
+  Situação: Parcial. Não há auditoria de acessibilidade, navegação por teclado
+  testada, foco gerenciado em modais ou contraste validado.
+
+NFR14 — Qualidade e testes
+  Não há testes automatizados, lint, tipagem, análise estática, CI ou checklist de
+  regressão.
+  Situação: Não implementado.
+
+
+===============================================================================
+5. REGRAS DE NEGÓCIO
+===============================================================================
+
+As regras abaixo descrevem invariantes e decisões que o sistema aplica de fato.
+Quando a implementação é mais permissiva do que a interface sugere, isso é indicado.
+
+RN01 — O tipo de conta é um dado do servidor
+  O login não recebe o tipo escolhido na tela; ele é lido de `usuarios.tipo`. O
+  formulário público só aceita "usuario" ou "empresa".
+
+RN02 — Empresa só entra depois de aprovada
+  Conta com status "pendente" ou "recusado" não abre sessão. Cliente e
+  administrador com status "ativo" entram normalmente.
+
+RN03 — Identidade única
+  `usuario` e `email` são únicos e comparados em minúsculas. O login aceita
+  qualquer um dos dois. O cadastro rejeita duplicidade com HTTP 409.
+
+RN04 — Formato de usuário e senha
+  Usuário: 3 a 30 caracteres, apenas letras minúsculas, números, ponto, hífen ou
+  sublinhado. Senha: no mínimo 6 caracteres, sem exigência de complexidade.
+
+RN05 — CNPJ
+  Apenas os 14 dígitos são validados; não há verificação dos dígitos check. O valor
+  é formatado como `00.000.000/0000-00`.
+
+RN06 — Sessão
+  Token opaco de 48 caracteres hexadecimais, gravado em `sessoes`, com validade de
+  30 dias. Sessão expirada é apagada na primeira tentativa de uso.
+
+RN07 — Código de recuperação
+  Código de 6 dígitos, válido por 15 minutos, gravado na mesma tabela de sessões com
+  o prefixo `reset:`. É de uso único e devolvido na resposta por falta de e-mail.
+
+RN08 — Duas playlists obrigatórias por usuário
+  Todo usuário recebe "Favoritos" e "Lista de Interesses", ambas privadas,
+  obrigatórias e com tipos fixos. Elas não podem ser excluídas.
+
+RN09 — Recriação das obrigatórias
+  Se a playlist obrigatória não existir, as rotas de favoritos e lista de
+  interesses tentam recriá-la. A listagem genérica de playlists não faz essa
+  verificação.
+
+RN10 — Alternância de favorito/lista
+  O mesmo endpoint adiciona se não existe e remove se já existe. A resposta informa
+  `ativo` (estado final) e o total da playlist.
+
+RN11 — Privacidade das playlists
+  Personalizadas nascem privadas, salvo escolha explícita por "publica". Favoritos
+  e Lista de Interesses são sempre privados na carga inicial.
+
+RN12 — Acesso a playlist de terceiro
+  Exige autenticação e playlist pública. Não há acesso anônimo, nem por link
+  compartilhado.
+
+RN13 — Um filme por playlist
+  A combinação (playlist_id, filme_id) é única; a API também verifica antes de
+  inserir. A ordem de exibição é a ordem de inserção (`playlist_itens.id`).
+
+RN14 — Limites da playlist
+  Nome até 80 caracteres; descrição até 300; ícone apenas entre os 12 valores
+  aceitos; privacidade apenas "publica" ou "privada".
+
+RN15 — Uma avaliação por usuário e filme
+  O par (filme_id, usuario_id) é único. Novo envio atualiza nota, texto e data,
+  em vez de criar duplicata.
+
+RN16 — Validade da avaliação
+  Nota inteira de 1 a 5; comentário obrigatório; texto truncado em 2000 caracteres.
+
+RN17 — Média de avaliações
+  Calculada por `AVG(nota)` e `COUNT(*)` na tabela `avaliacoes`, arredondada para
+  uma casa decimal. Não existe média global do catálogo.
+
+RN18 — Duas noções de nota
+  `filmes.nota` e `filmes.num_avaliacoes` são metadados do catálogo (herdados da
+  TMDB) e não são recalculados quando alguém avalia. A nota real é a média de
+  `avaliacoes`. A página de detalhe usa a média real quando a API responde.
+
+RN19 — Transições de status do filme
+  Empresa: criação e edição -> "pendente". Admin: criação -> "aprovado"; edição
+  mantém o status; aprovação -> "aprovado"; recusa -> "recusado".
+
+RN20 — Visibilidade de filme nos painéis
+  Administrador vê todos; empresa vê apenas `empresa_id = seu id`. Tentar abrir
+  filme de outra empresa devolve 403.
+
+RN21 — Catálogo público
+  Apenas filmes "aprovado" aparecem em `/api/filmes/catalogo`. A vitrine, porém,
+  não usa essa rota: usa o catálogo estático `js/dados-filmes.js`.
+
+RN22 — Gêneros normalizados
+  Existem 19 gêneros canônicos. Apelidos são convertidos (por exemplo, "scifi" e
+  "ficcaocientifica" -> "Ficção científica"; "policial" -> "Crime"; "infantil" ->
+  "Família"). Duplicatas são removidas e o máximo é 6 gêneros.
+
+RN23 — Classificação indicativa
+  Aceita apenas L, 10, 12, 14, 16 e 18; qualquer outro valor vira "L".
+
+RN24 — Imagem do filme
+  O caminho precisa começar com `assets/img-filmes/` (ou `uploads/`) e conter apenas
+  letras, números, ponto, hífen e sublinhado. Caminho inválido vira o placeholder
+  `assets/img-filmes/placeholder.svg`.
+
+RN25 — Upload
+  Aceita JPG, PNG, WEBP e GIF; confere o tipo real do conteúdo; limite de 4 MB;
+  nome final é slug do nome original + 6 bytes aleatórios + extensão derivada do
+  tipo. A pasta é criada se não existir.
+
+RN26 — Identificador do filme
+  Slug do título, em minúsculas, sem acentos, com hífens. Colisões recebem sufixo
+  `-2`, `-3` etc. Renomear o título não altera o id.
+
+RN27 — Limites dos campos do filme
+  Título até 120; ano apenas dígitos (até 4); plataforma até 60; sinopse até 1500.
+  Duração, trailer, elenco, onde assistir, relacionados e diretores não são
+  editáveis pelos painéis.
+
+RN28 — Aprovação com validação frouxa
+  Qualquer ação diferente de "aprovar" no terceiro segmento é tratada como recusa,
+  tanto para empresa quanto para filme. Não há verificação de que o recurso existe
+  antes do UPDATE.
+
+RN29 — Exclusão em cascata
+  Excluir filme remove itens de playlist e avaliações. Excluir playlist remove seus
+  itens. Excluir usuário (não há interface) removeria sessões, playlists,
+  avaliações e notificações. Filmes de empresa não são removidos nem desvinculados,
+  pois `empresa_id` não tem FK.
+
+RN30 — Arquivo de imagem não acompanha a exclusão
+  O registro do filme é apagado, mas o arquivo em `assets/img-filmes/uploads/`
+  permanece; não há limpeza de órfãos.
+
+RN31 — Notificações são por usuário
+  Cada usuário só lista e marca as próprias notificações; a atualização inclui
+  `usuario_id` na condição.
+
+RN32 — Plano é preferência local
+  O plano escolhido não é enviado ao servidor e não altera permissões. É apenas uma
+  chave em `localStorage`.
+
+RN33 — Comentários do admin são fictícios
+  A moderação não consulta o banco. Os dois comentários existem apenas na memória
+  da página e reaparecem ao recarregar.
+
+RN34 — Catálogo da interface é estático
+  Home, Explore e detalhe leem `js/dados-filmes.js`. Playlists, avaliações, painéis
+  e administração leem o banco. Um filme criado no banco não entra na vitrine até
+  ser acrescentado ao arquivo JavaScript.
+
+RN35 — Datas em UTC
+  `criado_em`, `atualizado_em` e `expira_em` são gravados com `gmdate()`, no formato
+  `Y-m-d H:i:s`. A interface converte para `dd/mm/aaaa` apenas na exibição.
+
+RN36 — Sem transações explícitas
+  Cada operação é um comando isolado. Cadastro de usuário + criação das playlists,
+  por exemplo, não é atômico: uma falha no meio pode deixar conta sem playlist.
+
+RN37 — Exportação pública
+  A exportação de cadastros não verifica sessão nem tipo. É a regra efetiva do
+  código, mas não deve ser tratada como requisito de negócio aceitável.
+
+
+===============================================================================
+6. FLUXOS PRINCIPAIS
+===============================================================================
+
+Os fluxos descrevem o caminho real da interface e as chamadas de API. Quando há
+diferença entre o que a tela mostra e o que o servidor faz, a diferença é apontada.
+
+-------------------------------------------------------------------------------
+UC01 — Visitante navega pelo catálogo
+-------------------------------------------------------------------------------
+Ator ........: Visitante
+Pré-condição : Nenhuma
+Passos:
+  1. Abre index.html. O navegador carrega jQuery, dados-filmes.js, api.js, app.js
+     e index.js.
+  2. index.js lê `filmesData`, monta os dois carrosséis (máximo 20 cada) e inicia
+     o rodízio do hero a cada 10 s.
+  3. O visitante clica em um card; o navegador vai para filme.html?id=<slug>.
+  4. filme.js procura o id em `filmesData`; se não achar, usa o primeiro filme.
+  5. A página renderiza os dados estáticos e chama
+     GET /api/filmes/{id}/avaliacoes para nota, quantidade e comentários.
+  6. A busca do cabeçalho ou uma categoria levam a explore.html?q=... ou
+     ?genero=..., e explore.js filtra `filmesData` localmente.
+Exceções:
+  - Se a API estiver fora do ar, a página ainda mostra os dados estáticos; a área
+    de avaliações exibe a mensagem de erro.
+  - Se o id não existir, nenhum aviso é dado; aparece o primeiro filme do catálogo.
+Efeitos no banco: nenhum (somente leitura).
+
+-------------------------------------------------------------------------------
+UC02 — Cadastro de cliente
+-------------------------------------------------------------------------------
+Ator ........: Visitante
+Pré-condição : Não estar logado
+Passos:
+  1. Acessa login.html?cadastro=1.
+  2. Escolhe o perfil Cliente e preenche nome, usuário, e-mail, senha, confirmação
+     e nascimento opcional.
+  3. O navegador valida a igualdade das senhas e envia POST /api/cadastro.
+  4. O servidor valida formato, duplicidade, cria `usuarios` com status "ativo",
+     cria as duas playlists obrigatórias e abre uma sessão.
+  5. A resposta traz token e destino `index.html`; o cliente grava o token e
+     redireciona.
+Exceções:
+  - Usuário/e-mail duplicado: 409, mensagem na tela.
+  - Formato inválido: 400, mensagem na tela.
+  - Falha ao criar playlist: a conta pode ficar sem as obrigatórias (sem transação).
+Efeitos: 1 linha em `usuarios`, 2 linhas em `playlists`, 1 linha em `sessoes`.
+
+-------------------------------------------------------------------------------
+UC03 — Cadastro de empresa e aprovação
+-------------------------------------------------------------------------------
+Atores ......: Visitante (empresa) e Administrador
+Pré-condição : Nenhuma
+Passos:
+  1. A empresa se cadastra em login.html?cadastro=1 com perfil Empresa e CNPJ.
+  2. POST /api/cadastro cria a conta com status "pendente" e as duas playlists,
+     mas não devolve token.
+  3. A tela volta ao login com a mensagem de espera.
+  4. O administrador entra em admin.html; GET /api/admin/empresas lista apenas as
+     pendentes.
+  5. O administrador clica em Aprovar; POST /api/admin/empresas/{id}/aprovar muda
+     o status para "ativo".
+  6. A empresa faz login e é levada a empresa.html.
+Exceções:
+  - Recusa: status "recusado"; o login devolve 403.
+  - Empresa recusada não aparece mais na lista de pendentes e não há botão de
+    reativação na interface.
+Efeitos: `usuarios.status`; sessão somente após aprovação.
+
+-------------------------------------------------------------------------------
+UC04 — Login e logout
+-------------------------------------------------------------------------------
+Ator ........: Cliente, Empresa ou Administrador
+Pré-condição : Conta existente e status permitido
+Passos:
+  1. O usuário informa identificador (usuário ou e-mail) e senha.
+  2. POST /api/login confere o hash e o status e abre uma sessão.
+  3. A resposta traz token, usuário público e destino conforme o tipo.
+  4. O token é gravado em `localStorage` e enviado em `X-Pipoquetas-Token`.
+  5. GET /api/eu revalida a sessão e devolve o contador de notificações não lidas.
+  6. No logout, POST /api/logout apaga a sessão; o cliente limpa o token e vai para
+     index.html.
+Exceções:
+  - Credenciais erradas: 401.
+  - Conta pendente ou recusada: 403.
+  - Token expirado: a sessão é apagada e a próxima chamada retorna 401.
+Efeitos: `sessoes` (insert/delete).
+
+-------------------------------------------------------------------------------
+UC05 — Favoritar ou salvar para assistir depois
+-------------------------------------------------------------------------------
+Ator ........: Cliente (ou empresa/admin via API)
+Pré-condição : Estar logado
+Passos:
+  1. No Explore ou no detalhe, o usuário clica no coração ou na bandeira.
+  2. A interface verifica `window.pipoEhLogado`; se falso, mostra convite para
+     entrar e não chama a API.
+  3. Se logado, envia POST /api/favoritos/{filmeId} ou
+     POST /api/lista-interesses/{filmeId}.
+  4. O servidor localiza a playlist obrigatória do usuário (recriando se faltar),
+     verifica se o filme existe e alterna o item.
+  5. A resposta informa `ativo` e `total`; o ícone é atualizado.
+Exceções:
+  - Filme inexistente: 404.
+  - Sem sessão: 401; a interface trata com o convite de login.
+Efeitos: insert/delete em `playlist_itens`.
+
+-------------------------------------------------------------------------------
+UC06 — Criar e manter playlist personalizada
+-------------------------------------------------------------------------------
+Ator ........: Cliente (ou empresa/admin via API)
+Pré-condição : Estar logado
+Passos:
+  1. Em playlists.html, o usuário abre o modal de criação.
+  2. Informa nome, descrição, ícone e privacidade; POST /api/playlists cria com
+     tipo "personalizada" e `obrigatoria = 0`.
+  3. Na playlist, o seletor lista os filmes de GET /api/filmes/catalogo e adiciona
+     com POST /api/playlists/{id}/itens.
+  4. Editar envia PUT /api/playlists/{id}; excluir envia DELETE.
+  5. A biblioteca recarrega com GET /api/playlists.
+Exceções:
+  - Nome vazio: 400.
+  - Playlist de outro usuário: 403.
+  - Excluir obrigatória: 400 com mensagem específica.
+  - Filme duplicado: a API não insere de novo.
+Efeitos: CRUD em `playlists` e `playlist_itens`.
+
+-------------------------------------------------------------------------------
+UC07 — Avaliar um filme
+-------------------------------------------------------------------------------
+Ator ........: Cliente (ou empresa/admin)
+Pré-condição : Estar logado e o filme existir no banco
+Passos:
+  1. Na página de detalhe, o formulário aparece apenas se houver sessão.
+  2. O usuário escolhe 1 a 5 estrelas e escreve o comentário.
+  3. POST /api/filmes/{id}/avaliacoes valida nota e texto.
+  4. Se já existe avaliação do usuário para o filme, atualiza; senão, insere.
+  5. A API devolve a nova média e a quantidade; a página recarrega a lista.
+Exceções:
+  - Sem sessão: 401.
+  - Nota fora de 1..5 ou texto vazio: 400.
+  - Filme inexistente: 404.
+Efeitos: insert/update em `avaliacoes`; não altera `filmes.nota`.
+
+-------------------------------------------------------------------------------
+UC08 — Empresa cadastra ou edita filme
+-------------------------------------------------------------------------------
+Ator ........: Empresa
+Pré-condição : Estar logada e aprovada
+Passos:
+  1. Em empresa.html, clica em Cadastrar filme (ou acessa ?novo=1).
+  2. Preenche título, ano, classificação, gêneros, plataforma, sinopse e,
+     opcionalmente, escolhe uma imagem.
+  3. Se houver imagem, o navegador lê o arquivo e envia POST /api/filmes/upload;
+     o servidor grava o arquivo e devolve o caminho.
+  4. O formulário envia POST /api/filmes (novo) ou PUT /api/filmes/{id} (edição).
+  5. O filme é gravado com status "pendente" e aparece em Meus Filmes.
+  6. O administrador aprova em admin.html; o status vira "aprovado".
+Exceções:
+  - Título vazio: 400.
+  - Imagem inválida, acima de 4 MB ou de tipo não permitido: 400.
+  - Filme de outra empresa: 403.
+  - Editar filme já aprovado o devolve para "pendente".
+Efeitos: insert/update em `filmes`; arquivo em `assets/img-filmes/uploads/`.
+Observação: o filme não aparece na home, no Explore nem no detalhe, pois essas
+telas leem o catálogo estático.
+
+-------------------------------------------------------------------------------
+UC09 — Administrador aprova empresa e filme
+-------------------------------------------------------------------------------
+Ator ........: Administrador
+Pré-condição : Estar logado como administrador
+Passos:
+  1. admin.html carrega, em paralelo, GET /api/admin/empresas e GET /api/filmes.
+  2. A tabela de empresas mostra apenas status "pendente".
+  3. A tabela de filmes pendentes mostra os filmes com status "pendente" e o nome
+     da empresa.
+  4. O administrador clica em Aprovar ou Recusar.
+  5. POST /api/admin/empresas/{id}/aprovar|recusar ou
+     POST /api/admin/filmes/{id}/aprovar|recusar atualiza o status.
+  6. A página recarrega os dados.
+Exceções:
+  - Qualquer ação diferente de "aprovar" é tratada como recusa.
+  - Não há confirmação, auditoria ou notificação ao envolvido.
+Efeitos: `usuarios.status` ou `filmes.status`.
+
+-------------------------------------------------------------------------------
+UC10 — Administrador mantém o catálogo
+-------------------------------------------------------------------------------
+Ator ........: Administrador
+Pré-condição : Estar logado como administrador
+Passos:
+  1. A aba Catálogo lista os filmes aprovados.
+  2. Adicionar filme abre o mesmo formulário, sem empresa; o filme nasce aprovado.
+  3. Editar envia PUT /api/filmes/{id} e mantém o status.
+  4. Remover envia DELETE /api/filmes/{id}, com confirmação do navegador.
+  5. A lista é recarregada.
+Exceções:
+  - Filme inexistente: 404.
+  - A imagem antiga não é apagada ao trocar ou remover o filme.
+Efeitos: CRUD em `filmes`; cascata em `playlist_itens` e `avaliacoes`.
+Observação: remover um filme da carga inicial não o retira da home/Explore, pois
+essas telas usam o catálogo JavaScript separado.
+
+-------------------------------------------------------------------------------
+UC11 — Recuperar ou alterar senha
+-------------------------------------------------------------------------------
+Ator ........: Visitante (recuperação) ou usuário logado (alteração)
+Pré-condição : Conta existente
+Passos (recuperação):
+  1. Em login.html, o usuário clica em "Esqueci a senha".
+  2. Informa usuário ou e-mail; POST /api/esqueci-senha gera o código e o devolve
+     na resposta.
+  3. A tela mostra o código em "modo demonstração" e abre o formulário de
+     redefinição.
+  4. O usuário informa código e nova senha; POST /api/redefinir-senha valida o
+     código, troca o hash, apaga o código e volta ao login.
+Passos (alteração):
+  1. Logado, abre Configurações -> Segurança.
+  2. Informa senha atual, nova senha e confirmação.
+  3. POST /api/perfil/senha confere a senha atual, troca o hash e encerra as outras
+     sessões.
+Exceções:
+  - Código inválido/expirado: 400.
+  - Senha atual errada: 403.
+  - Nova senha com menos de 6 caracteres: 400.
+Efeitos: update em `usuarios.senha_hash`; delete/insert em `sessoes`.
+
+-------------------------------------------------------------------------------
+UC12 — Exportar e importar cadastros
+-------------------------------------------------------------------------------
+Ator ........: Visitante ou usuário (sem exigência de sessão)
+Pré-condição : Nenhuma
+Passos (exportação):
+  1. Na tela de login, clica em "Baixar clientes.json".
+  2. GET /api/clientes/export devolve todos os usuários, sem hash de senha.
+  3. O navegador monta um Blob e baixa o arquivo.
+Passos (importação):
+  1. Ao carregar qualquer página, js/api.js verifica `pipo_clientes` no
+     localStorage e a chave `pipo_migrado_bd`.
+  2. Se houver contas antigas e ainda não houve migração, envia
+     POST /api/clientes/importar.
+  3. O servidor ignora duplicados, aceita apenas cliente/empresa e cria as
+     playlists obrigatórias.
+Exceções:
+  - Lista vazia ou inválida: nada é importado.
+  - Conta sem hash reconhecido recebe um hash padrão (ver api/rotas/auth.php).
+Efeitos: leitura de `usuarios`; inserção de contas e playlists.
+Risco: qualquer pessoa pode chamar as duas rotas, sem token.
+
+
+===============================================================================
+7. ARQUITETURA
+===============================================================================
+
+7.1 Estilo arquitetural
+
+A Pipoquetas é uma aplicação web monolítica, com front-end multipágina e API JSON
+própria:
+
+  - Não é SPA: cada tela é um HTML independente, com scripts próprios.
+  - Não há framework de front-end nem bundler.
+  - Não há framework PHP nem ORM.
+  - O back-end é um front controller (`api/index.php?r=...`) com roteamento manual.
+  - A persistência é relacional (SQLite ou MySQL), acessada por PDO.
+  - Arquivos enviados ficam no sistema de arquivos local.
+  - O catálogo exibido na vitrine é um arquivo JavaScript estático, separado do
+    banco.
+
+Em termos de camadas, há uma separação simples:
+
+  +---------------------------------------------------------------+
+  | Navegador                                                     |
+  |  HTML + CSS + jQuery + scripts de página + dados-filmes.js    |
+  |  js/api.js (cliente HTTP)                                     |
+  +-----------------------------+---------------------------------+
+                                | AJAX JSON + X-Pipoquetas-Token
+                                v
+  +---------------------------------------------------------------+
+  | Servidor PHP                                                  |
+  |  servidor-router.php (estáticos)  |  api/index.php (API)      |
+  |                                   |  api/auth.php (sessão)    |
+  |                                   |  api/rotas/*.php (regras) |
+  |                                   |  api/db.php (PDO/esquema) |
+  +-----------------------------+---------------------------------+
+                                | PDO
+                                v
+  +---------------------------------------------------------------+
+  | Dados                                                         |
+  |  SQLite dados/pipoquetas.sqlite  ou  MySQL pipoquetas         |
+  |  assets/img-filmes/uploads/ (arquivos enviados)               |
+  |  dados/filmes.json + js/dados-filmes.js (catálogo estático)   |
+  +---------------------------------------------------------------+
+
+7.2 Componentes e responsabilidades
+
+  +-------------------------+-------------------------------------+-----------------+
+  | Componente              | Responsabilidade                    | Tecnologia      |
+  +-------------------------+-------------------------------------+-----------------+
+  | Páginas HTML            | Estrutura de cada tela e inclusão   | HTML5           |
+  |                         | dos scripts                         |                 |
+  | CSS por página          | Layout, tema e responsividade       | CSS3            |
+  | js/app.js               | Header, sidebar, avatar, modal de   | jQuery          |
+  |                         | configurações, tema, sessão, busca, |                 |
+  |                         | gêneros e upload                    |                 |
+  | js/api.js               | Cliente HTTP, token, migração e     | jQuery AJAX     |
+  |                         | avisos                              |                 |
+  | js/dados-filmes.js      | Catálogo estático usado pela UI     | JavaScript      |
+  | Scripts de página       | Regras de tela (home, explore,      | jQuery          |
+  |                         | filme, playlists, painéis, login)   |                 |
+  | api/index.php           | Front controller e despacho de      | PHP 8           |
+  |                         | rotas por método HTTP               |                 |
+  | api/auth.php            | Token, sessão, autorização e        | PHP 8           |
+  |                         | respostas JSON                      |                 |
+  | api/db.php              | Conexão, escolha de driver, esquema | PHP 8 + PDO     |
+  |                         | e carga inicial                     |                 |
+  | api/rotas/*.php         | Regras de autenticação, filmes,     | PHP 8           |
+  |                         | playlists, avaliações, notificações |                 |
+  |                         | e administração                     |                 |
+  | servidor-router.php     | Estáticos com cache/gzip e bloqueio | PHP 8           |
+  |                         | de arquivos sensíveis               |                 |
+  | servidor.ps1/.bat       | Inicialização local e fallback      | PowerShell/BAT  |
+  | gerar_dados_filmes.py   | Geração offline do catálogo         | Python          |
+  +-------------------------+-------------------------------------+-----------------+
+
+7.3 Ciclo de uma requisição de API
+
+  1. js/api.js converte `/api/...` em `api/index.php?r=...` e envia o token no
+     cabeçalho.
+  2. api/index.php carrega db.php, auth.php e os módulos de rota.
+  3. `pipo_db()` escolhe o driver, abre o PDO, executa `pipo_migrar()` e
+     `pipo_semear()`.
+  4. O front controller divide `r` em segmentos e escolhe o módulo pelo primeiro
+     segmento: eu, login, logout, cadastro, esqueci-senha, redefinir-senha,
+     perfil, minhas-avaliacoes, clientes, filmes, playlists, favoritos,
+     lista-interesses, notificacoes ou admin.
+  5. O módulo confere método HTTP, autenticação, tipo e propriedade.
+  6. A resposta é JSON com `Content-Type: application/json; charset=utf-8`.
+     Erros usam `{ "erro": "..." }` e o status HTTP adequado.
+  7. js/api.js resolve ou rejeita um Deferred próprio; a página atualiza o DOM.
+  8. Se o servidor não responde (status 0), o cliente troca a mensagem por uma
+     orientação para iniciar o `INICIAR.bat`.
+
+Códigos de status usados: 200, 400, 401, 403, 404, 405, 409 e 500. Não há 201,
+204, 422 ou versionamento de API.
+
+7.4 Sessão e autenticação
+
+  - Login: POST /api/login -> `pipo_abrir_sessao()`.
+  - Token: `bin2hex(random_bytes(24))`, 48 caracteres.
+  - Armazenamento: tabela `sessoes` (token, usuario_id, criado_em, expira_em).
+  - Transporte: cabeçalho `X-Pipoquetas-Token`; `?token=` também é aceito.
+  - Cliente: `localStorage["pipo_sessao_token"]`.
+  - Validação: JOIN com `usuarios`, comparação de expiração e exclusão se vencida.
+  - Cache de interface: `sessionStorage["pipo_usuario_cache_v1"]` por 5 minutos.
+  - Recuperação: códigos `reset:XXXXXX` na mesma tabela, com 15 minutos.
+
+Consequências arquiteturais:
+
+  - O servidor é a autoridade; a interface não é.
+  - O token em localStorage exige confiança no escape de HTML e não protegido contra
+    XSS; não há cookie HttpOnly, CSRF ou CSP.
+  - A sessão é stateful no banco, mas o cliente é stateless entre requisições.
+
+7.5 Duas fontes de catálogo
+
+Este é o ponto arquitetural mais importante do projeto:
+
+  Fonte A — catálogo estático
+    - Arquivos: dados/filmes.json (mestre) e js/dados-filmes.js (consumido pela UI).
+    - Usada por: home, Explore, detalhe do filme.
+    - Conteúdo: 75 filmes, com pôster local, trailer, elenco, onde assistir,
+      relacionados e duração. Diretores não estão no JSON: vêm do mapa
+      `pipo_diretores()` na carga inicial e só existem no banco.
+    - Não consulta o banco.
+
+  Fonte B — tabela `filmes`
+    - Usada por: playlists, avaliações, painéis da empresa e do administrador,
+      aprovação e catálogo público da API.
+    - Recebe os 75 filmes na carga inicial e os filmes criados pelos painéis.
+
+Fluxo de dados:
+
+  gerar_dados_filmes.py -> dados/filmes.json -> carga inicial -> tabela filmes
+                                            -> js/dados-filmes.js -> vitrine
+
+Consequências:
+
+  - Um filme novo criado no banco não aparece na home, no Explore ou no detalhe.
+  - Um filme removido do banco continua na vitrine.
+  - Editar um filme no painel não altera o que a vitrine mostra.
+  - A página de detalhe de um id desconhecido cai no primeiro filme, em vez de
+    exibir "não encontrado".
+  - As avaliações são gravadas no banco pelo id do filme estático; isso funciona
+    porque os 75 ids coincidem entre as duas fontes.
+
+7.6 Fonte de verdade por domínio
+
+  +-----------------------------+-----------------------------------------------+
+  | Domínio                     | Fonte usada pela aplicação                    |
+  +-----------------------------+-----------------------------------------------+
+  | Vitrine e catálogo visual   | js/dados-filmes.js                            |
+  | Detalhe do filme            | js/dados-filmes.js + API de avaliações        |
+  | Playlists e favoritos       | Banco (playlists, playlist_itens)             |
+  | Avaliações                  | Banco (avaliacoes)                            |
+  | Contas e sessões            | Banco (usuarios, sessoes)                     |
+  | Filmes dos painéis          | Banco (filmes)                                |
+  | Aprovação                   | Banco (status)                                |
+  | Notificações                | Banco (notificacoes), sem interface           |
+  | Tema e plano                | localStorage                                  |
+  | Catálogo mestre de manutenção| dados/filmes.json                            |
+  | Imagens enviadas            | assets/img-filmes/uploads/                    |
+  +-----------------------------+-----------------------------------------------+
+
+7.7 Implantação
+
+  Modo A — servidor embutido do PHP (recomendado)
+    - `INICIAR.bat` -> `servidor.ps1` -> `php -S localhost:8080 servidor-router.php`.
+    - O roteador entrega estáticos e deixa `/api/index.php` para o PHP.
+    - Há ETag, gzip, Cache-Control e bloqueio de `dados/`, dotfiles e scripts.
+    - O cache `dados/.pipo_driver` é apagado na inicialização.
+
+  Modo B — Apache/XAMPP
+    - A pasta do projeto vai para `htdocs`.
+    - O Apache serve os estáticos e executa o PHP normalmente.
+    - `servidor-router.php` é ignorado; as proteções de arquivos não valem.
+    - `dados/pipoquetas.sqlite` fica dentro da raiz web e pode ser baixado se não
+      houver regra de negação.
+
+  Modo C — somente estático (sem PHP)
+    - O PowerShell usa `HttpListener` e serve arquivos.
+    - A API responde 503; login, listas, avaliações e painéis não funcionam.
+    - O bloqueio de `tmdb_chave.txt`, `.sqlite`, `.ps1` e `.bat` é feito no script.
+
+  Não há implantação em nuvem, contêiner, proxy reverso, HTTPS ou domínio.
+
+7.8 Integrações externas
+
+  - Font Awesome via CDN: ícones; se falhar, o layout permanece sem ícones.
+  - YouTube: iframe do trailer; em `file://`, abre em nova aba.
+  - image.tmdb.org: 375 fotos de elenco e 157 logos de streaming remotos.
+  - Sites de streaming: links de "Onde Assistir".
+  - TMDB API: apenas no gerador Python, offline.
+  - Nenhuma integração de pagamento, e-mail, SMS, OAuth ou armazenamento em nuvem.
+
+7.9 Decisões e restrições arquiteturais
+
+  - A ausência de framework reduz dependências, mas concentra validação e regras
+    nas rotas.
+  - O uso de PDO com prepared statements protege as consultas, mas não há camada
+    de repositório nem transações.
+  - O front-end multipágina simplifica o entendimento, mas repete header, sidebar
+    e modal em cada HTML.
+  - O catálogo estático garante velocidade e funciona sem banco, mas cria a
+    divergência descrita em 7.5.
+  - O servidor embutido é adequado à demonstração local, não a produção.
+  - O modo somente estático é um fallback de apresentação, não uma operação
+    degradada com funcionalidade.
+  - Não há separação entre "modelo", "serviço" e "controlador"; as funções de rota
+    acumulam essas responsabilidades.
+  - Não há migrações incrementais: mudanças de coluna exigem recriar o banco.
+
+7.10 Pontos de extensão
+
+  Para acrescentar uma rota:
+    1. criar a função no módulo de domínio em api/rotas/;
+    2. incluir o `case` em api/index.php;
+    3. tratar método, autenticação e validação;
+    4. chamar a rota pelo cliente js/api.js.
+
+  Para acrescentar uma página:
+    1. criar o HTML com jQuery, api.js e app.js;
+    2. criar o CSS e o script de página;
+    3. incluir o link na sidebar/header, se necessário;
+    4. proteger a página no cliente e, obrigatoriamente, na API.
+
+  Para acrescentar um campo ao filme:
+    1. alterar o DDL em api/db.php (e recriar o banco, pois não há ALTER TABLE);
+    2. ajustar `pipo_limpar_filme()`, a criação, a edição e a serialização;
+    3. ajustar os formulários de admin/empresa;
+    4. ajustar dados/filmes.json e js/dados-filmes.js, se o campo for da vitrine.
+
+  Para acrescentar um filme ao catálogo visual:
+    1. incluir o objeto em dados/filmes.json;
+    2. regenerar ou editar js/dados-filmes.js;
+    3. reiniciar o banco para a carga inicial inserir o registro;
+    4. garantir que o id seja igual nas duas fontes.
+
+
+===============================================================================
+8. REGRAS DE INTERFACE X REGRAS DE SERVIDOR
+===============================================================================
+
+A tabela abaixo resume os casos em que a tela e o servidor não têm o mesmo grau de
+restrição. Em todos eles, vale o que o servidor permite.
+
+  +--------------------------------+-----------------------+-----------------------+
+  | Situação                       | Interface             | Servidor              |
+  +--------------------------------+-----------------------+-----------------------+
+  | Abrir admin.html sem ser admin | redireciona           | 403 na API            |
+  | Abrir empresa.html sem empresa | redireciona           | 403 na API            |
+  | Favoritar sem login            | convida a entrar      | 401                   |
+  | Avaliar sem login              | esconde formulário    | 401                   |
+  | Editar playlist obrigatória    | esconde opção         | permite               |
+  | Ver playlist pública anônimo   | link não oferecido    | 401                   |
+  | Remover comentário no admin    | remove da tela        | nada acontece         |
+  | Escolher plano                 | destaca card          | não recebe nada       |
+  | Filme novo na vitrine          | não aparece           | existe no banco       |
+  | Filme removido da vitrine      | continua visível      | foi apagado do banco  |
+  | Exportar cadastros             | botão na tela         | sem autenticação      |
+  +--------------------------------+-----------------------+-----------------------+
+
+Essa separação é normal em aplicações web: a interface melhora a experiência, mas
+não é fronteira de segurança. O problema, aqui, é que algumas regras existem apenas
+na interface (moderação, plano) e outras são mais permissivas no servidor do que a
+intenção do produto sugere (playlists obrigatórias, playlist pública anônima).
+
+
+===============================================================================
+9. LACUNAS, RISCOS E ITENS NÃO CONFIRMADOS
+===============================================================================
+
+9.1 Lacunas funcionais que afetam a análise
+
+  1. Notificações sem interface: não há como o usuário ver ou marcar notificações
+     pela tela, apesar de a API existir.
+  2. Planos sem cobrança: não há assinatura, preço, checkout ou vínculo com a conta.
+  3. Moderação de comentários fictícia: os dados não vêm do banco.
+  4. Perfil somente leitura: não há edição nem exclusão de conta.
+  5. Recuperação de senha sem e-mail: o código aparece na resposta.
+  6. Visualizações sempre zero.
+  7. Campos avançados do filme não editáveis.
+  8. Preço ignorado pelo back-end.
+  9. Filmes dos painéis fora da vitrine.
+ 10. Playlist pública inacessível sem login.
+
+9.2 Riscos técnicos
+
+  1. Exportação e importação de cadastros sem autenticação.
+  2. Token em localStorage, sem cookie HttpOnly, CSRF ou CSP.
+  3. Código de recuperação devolvido na resposta.
+  4. Credenciais de banco fixas no código.
+  5. SQLite dentro da raiz web no modo Apache, sem regra de negação.
+  6. `tmdb_chave.txt` não está no .gitignore e, no modo PHP embutido, não é
+     bloqueado pelo roteador (o bloqueio existe apenas no modo estático do
+     PowerShell). Se o arquivo existir, pode ser servido.
+  7. `filmes.empresa_id` sem chave estrangeira.
+  8. Ausência de transações em operações compostas.
+  9. Ausência de auditoria, logs e testes.
+ 10. Duplicação do catálogo e divergência entre vitrine e banco.
+ 11. Exclusão de filme deixa imagem órfã.
+ 12. Aprovação aceita qualquer ação como recusa.
+
+9.3 Itens não confirmados ou fora do escopo
+
+  - Não há documento de requisitos, regra de negócio formal, UML, BPMN ou
+    especificação de API no repositório.
+  - Não há informação de autoria, licença ou propriedade intelectual além do que
+    aparece no rodapé e no readme.txt.
+  - Não há definição de metas de desempenho, disponibilidade, retenção ou backup.
+  - Não há ambiente de produção, usuários reais ou dados reais.
+  - O readme.txt cita arquivos e um código de administrador que não existem no
+    código atual; não foi tratado como fonte de verdade.
+  - O `.git` existe com um commit, mas o projeto não é operado como repositório
+    versionado no fluxo de trabalho atual.
+
+9.4 Consequências para uma evolução
+
+  Antes de usar o sistema fora do ambiente demonstrativo, seria necessário, no
+  mínimo:
+
+  1. unificar o catálogo (vitrine lendo a API ou banco alimentando o JS);
+  2. proteger exportação/importação e remover dados pessoais da resposta pública;
+  3. implementar CSRF, rate limiting, verificação de e-mail e cookie seguro;
+  4. criar transações e migrações;
+  5. adicionar auditoria e logs;
+  6. criar testes de API e de fluxos críticos;
+  7. definir backup e proteção do arquivo SQLite;
+  8. implementar a interface de notificações ou removê-la do discurso do produto;
+  9. implementar moderação real ou remover a tela;
+ 10. revisar a política de privacidade e o ciclo de vida dos dados pessoais.
+
+
+===============================================================================
+10. RASTREABILIDADE RESUMIDA
+===============================================================================
+
+  +-------------------------------+----------------------------------------------+
+  | Domínio / requisitos          | Arquivos principais                          |
+  +-------------------------------+----------------------------------------------+
+  | RF01-RF11 (conta e sessão)    | api/rotas/auth.php, api/auth.php, js/login.js|
+  | RF12-RF16 (catálogo e busca)  | index.html, explore.html, filme.html,        |
+  |                               | js/index.js, js/explore.js, js/filme.js,     |
+  |                               | js/dados-filmes.js                           |
+  | RF17-RF24 (filmes e upload)   | api/rotas/filmes.php, js/admin.js,           |
+  |                               | js/empresa.js, js/app.js                     |
+  | RF25-RF33 (listas e playlists)| api/rotas/playlists.php, playlists.html,     |
+  |                               | playlist.html, favoritos.html,               |
+  |                               | lista-interesses.html, js/playlists*.js      |
+  | RF34-RF38 (avaliações)        | api/rotas/avaliacoes.php, js/filme.js,       |
+  |                               | js/app.js, js/admin.js                       |
+  | RF39-RF45 (empresa)           | empresa.html, js/empresa.js, api/rotas/filmes|
+  | RF46-RF51 (administração)     | admin.html, js/admin.js, api/rotas/admin.php |
+  | RF52-RF60 (transversais)      | api/rotas/notificacoes.php, assinatura.html, |
+  |                               | js/index.js, js/app.js, servidor*.php/.ps1,  |
+  |                               | gerar_dados_filmes.py                        |
+  | Regras de banco               | api/db.php, DOCUMENTACAO_BANCO_DE_DADOS.txt  |
+  | Armazenamento                 | DOCUMENTACAO_ARMAZENAMENTO.txt               |
+  +-------------------------------+----------------------------------------------+
+
+
+===============================================================================
+11. CHECKLIST DE VERIFICAÇÃO
+===============================================================================
+
+Para confirmar que esta análise continua válida após uma alteração:
+
+  [ ] O login ainda lê o tipo do banco e bloqueia status pendente/recusado?
+  [ ] O formulário público ainda rejeita o tipo administrador?
+  [ ] As duas playlists obrigatórias ainda são criadas no cadastro?
+  [ ] A API ainda permite editar playlist obrigatória?
+  [ ] A playlist pública ainda exige login?
+  [ ] A avaliação ainda é única por usuário/filme e atualiza a média?
+  [ ] `filmes.nota` continua separado da média de `avaliacoes`?
+  [ ] A empresa ainda vê apenas os próprios filmes?
+  [ ] Editar filme como empresa ainda volta para pendente?
+  [ ] O catálogo público ainda filtra status aprovado?
+  [ ] A vitrine ainda lê js/dados-filmes.js em vez da API?
+  [ ] O upload ainda valida conteúdo real e limite de 4 MB?
+  [ ] O painel admin ainda lista apenas empresas pendentes?
+  [ ] A moderação de comentários ainda é local?
+  [ ] As rotas de exportação/importação ainda estão sem autenticação?
+  [ ] O roteador ainda bloqueia dados/, dotfiles e scripts no modo PHP?
+  [ ] O readme.txt ainda está desatualizado em relação ao código?
+
+
+===============================================================================
+FIM DO DOCUMENTO
+===============================================================================

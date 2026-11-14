@@ -1,0 +1,1019 @@
+===============================================================================
+DOCUMENTACAO_BANCO_DE_DADOS.txt
+PIPOQUETAS — Documentação técnica do banco de dados
+===============================================================================
+
+Projeto analisado ....: Pipoquetas 1.1
+Data da análise ......: 13/11/2026
+Fontes verificadas ...: api/db.php, api/auth.php, api/index.php, api/rotas/*.php,
+                        dados/pipoquetas.sqlite (inspeção direta),
+                        dados/filmes.json, js/dados-filmes.js
+Ambientes suportados .: SQLite 3 (padrão) e MySQL/MariaDB (XAMPP)
+
+Este documento descreve o banco de dados que a aplicação realmente utiliza. Não foram
+inventadas tabelas, colunas ou relacionamentos. Quando alguma relação é apenas lógica
+(sem constraint no banco) ou não existe, isso é dito explicitamente.
+
+
+===============================================================================
+1. VISÃO GERAL
+===============================================================================
+
+O banco da Pipoquetas é relacional, pequeno e centralizado. Ele guarda:
+
+  - as contas de acesso (clientes, empresas e administradores);
+  - as sessões de login e os códigos temporários de redefinição de senha;
+  - o catálogo de filmes;
+  - as playlists de cada usuário e os filmes dentro delas;
+  - as avaliações (nota + comentário);
+  - as notificações;
+  - metadados internos de versão do esquema e da carga inicial.
+
+Há oito tabelas:
+
+  +------------------+-----------------------------------------------------------+
+  | Tabela           | Responsabilidade                                          |
+  +------------------+-----------------------------------------------------------+
+  | usuarios         | Contas de cliente, empresa e administrador                |
+  | sessoes          | Tokens de sessão e códigos de redefinição de senha        |
+  | filmes           | Catálogo de filmes                                        |
+  | playlists        | Playlists dos usuários (obrigatórias e personalizadas)    |
+  | playlist_itens   | Filmes dentro de cada playlist (N:N)                      |
+  | avaliacoes       | Avaliações de usuários sobre filmes (N:N com atributos)   |
+  | notificacoes     | Notificações destinadas a um usuário                      |
+  | pipo_meta        | Metadados internos (schema_version, seed_version)         |
+  +------------------+-----------------------------------------------------------+
+
+A tabela sqlite_sequence existe apenas no SQLite, criada automaticamente pelo mecanismo
+AUTOINCREMENT; não é uma entidade de domínio. Da mesma forma, sqlite_autoindex_* são
+índices internos criados pelas chaves primárias e restrições UNIQUE.
+
+O banco NÃO possui tabelas separadas de Cliente, Empresa ou Administrador. Esses três
+papéis são registros da mesma tabela `usuarios`, diferenciados pela coluna `tipo`.
+
+O banco NÃO possui tabelas de gênero, elenco, diretor, plataforma de streaming,
+relacionados, assinatura, pagamento, curtida, comentário isolado ou arquivo. Os dados
+correspondentes, quando existem, ficam em colunas TEXT com JSON dentro de `filmes` ou
+dependem de serviços/arquivos externos.
+
+
+===============================================================================
+2. AMBIENTES E SELEÇÃO DO DRIVER
+===============================================================================
+
+2.1 SQLite (padrão)
+
+  Arquivo ........: dados/pipoquetas.sqlite
+  Driver PDO .....: sqlite
+  Configuração ...: PRAGMA foreign_keys = ON
+                    PRAGMA busy_timeout = 5000
+                    PRAGMA journal_mode = WAL
+                    PRAGMA synchronous = NORMAL
+  Diretório ......: dados/ (precisa ser gravável)
+  Vantagem .......: não exige instalação de servidor de banco.
+
+2.2 MySQL/MariaDB (XAMPP)
+
+  Host ...........: 127.0.0.1
+  Porta ..........: 3306
+  Banco ..........: pipoquetas
+  Charset ........: utf8mb4
+  Collation ......: utf8mb4_unicode_ci
+  Criação ........: CREATE DATABASE IF NOT EXISTS pipoquetas ...
+  Driver PDO .....: mysql
+  Credenciais ....: fixas no código (configuração padrão do XAMPP). Não são reproduzidas
+                    aqui por diretriz de segurança.
+
+2.3 Como o driver é escolhido (api/db.php)
+
+  1. Se a variável de ambiente PIPOQUETAS_DB for "mysql" ou "sqlite", ela é obedecida.
+  2. Caso contrário, o sistema lê o cache dados/.pipo_driver. Se o valor for válido e
+     tiver sido verificado há menos de 3600 segundos (1 hora), ele é usado.
+  3. Sem cache válido, o sistema testa a porta 127.0.0.1:3306 com timeout de 0,25 s.
+     Se o teste passar e a conexão PDO funcionar, escolhe MySQL e cria o banco se
+     necessário. Caso contrário, escolhe SQLite.
+  4. O resultado é gravado em dados/.pipo_driver no formato:
+        {"driver":"mysql"|"sqlite","verificado":<timestamp_unix>}
+  5. servidor.ps1 apaga esse cache na inicialização, forçando nova verificação.
+
+Observação: se PIPOQUETAS_DB=mysql for forçado e o MySQL estiver indisponível, a conexão
+PDO lança exceção e a API falha; não há fallback automático para SQLite nesse caso.
+
+2.4 Versões de esquema e carga
+
+  PIPO_ESQUEMA_VERSAO = 2
+  PIPO_SEED_VERSAO    = 2
+
+  A tabela pipo_meta guarda:
+    schema_version = "2"
+    seed_version   = "2"
+
+  Enquanto a versão gravada for maior ou igual à constante, as rotinas de criação e de
+  carga são ignoradas naquela requisição. Isso evita repetir dezenas de CREATE TABLE e
+  centenas de INSERT a cada chamada da API.
+
+  Importante: `pipo_migrar()` usa CREATE TABLE IF NOT EXISTS e CREATE INDEX. Não há
+  migrações ALTER TABLE. Se uma coluna existente precisar mudar, o banco precisa ser
+  recriado (ou alterado manualmente); aumentar a versão, sozinho, não altera a tabela.
+
+
+===============================================================================
+3. CONVENÇÕES DO ESQUEMA
+===============================================================================
+
+  - Chaves primárias:
+      * usuarios, playlists, playlist_itens, avaliacoes, notificacoes:
+          MySQL  -> INT AUTO_INCREMENT PRIMARY KEY
+          SQLite -> INTEGER PRIMARY KEY AUTOINCREMENT
+      * filmes.id: VARCHAR(160) (slug textual, definido pela aplicação)
+      * sessoes.token: VARCHAR(160)
+      * pipo_meta.chave: VARCHAR(80)
+
+  - Textos:
+      $txt   = VARCHAR(191)   (tipo, status, e-mail, senha_hash etc.)
+      $nome  = VARCHAR(500)   (nome, título, descrição de imagem)
+      $longo = TEXT           (sinopse, JSON de gêneros/elenco, descrições)
+      $pk    = VARCHAR(160)
+
+    No SQLite os limites de VARCHAR não são aplicados; no MySQL são. A API também impõe
+    limites próprios (por exemplo, título de filme até 120 caracteres).
+
+  - Datas e horas:
+      Todas as colunas `criado_em`, `atualizado_em` e `expira_em` são VARCHAR/TEXT no
+      formato "YYYY-MM-DD HH:MM:SS", em UTC (gmdate). Não há colunas DATE/DATETIME nem
+      timezone por registro.
+
+  - Booleanos:
+      Representados por INT 0/1 (`obrigatoria`, `lida`).
+
+  - JSON em TEXT:
+      `filmes.generos`, `filmes.elenco`, `filmes.onde_assistir` e
+      `filmes.relacionados` guardam arrays/objetos JSON serializados. Não há colunas
+      JSON nativas nem tabelas normalizadas para esses dados.
+
+  - Identificadores de filme:
+      Slug em minúsculas, sem acentos, com hífens (ex.: "duna-parte-2"). A API gera o
+      slug a partir do título e acrescenta "-2", "-3" etc. se já existir.
+
+  - Chaves estrangeiras:
+      Declaradas apenas em sessoes, playlists, playlist_itens, avaliacoes e
+      notificacoes. `filmes.empresa_id` NÃO tem FOREIGN KEY.
+
+  - Ações referenciais:
+      Todas as FKs declaradas usam ON DELETE CASCADE. Não há ON UPDATE declarado.
+
+
+===============================================================================
+4. RESUMO EXPLICATIVO DAS ENTIDADES
+===============================================================================
+
+4.1 Usuário (tabela `usuarios`)
+
+Temos a entidade Usuário, que armazena os dados de identificação e autenticação de todas
+as pessoas e organizações que acessam a aplicação. Em vez de três tabelas separadas, a
+Pipoquetas usa uma única tabela `usuarios` com a coluna `tipo`, que pode assumir os
+valores "usuario" (cliente), "empresa" ou "administrador".
+
+Para o cliente, a tabela guarda nome, nome de usuário, e-mail, hash da senha, data de
+nascimento opcional, status e data de cadastro. O cliente usa a aplicação para navegar
+pelo catálogo, salvar favoritos, montar a lista de interesses, criar playlists e avaliar
+filmes. O cliente nasce com status "ativo" e pode entrar imediatamente após o cadastro.
+
+Para a empresa, a mesma tabela guarda adicionalmente o CNPJ. A empresa é criada com
+status "pendente" e só consegue autenticar depois que um administrador aprova a conta.
+Ela utiliza o sistema para cadastrar filmes, editá-los, removê-los e acompanhar
+indicadores dos próprios títulos. A ligação entre a empresa e seus filmes é feita por
+`filmes.empresa_id`, que aponta para `usuarios.id`, mas sem constraint de chave
+estrangeira.
+
+Para o administrador, a tabela guarda os mesmos dados básicos, com `tipo =
+"administrador"`. O administrador não é criado pelo formulário público; a carga inicial
+cria uma conta administrativa. Ele aprova empresas, aprova ou recusa filmes e gerencia
+todo o catálogo.
+
+A tabela NÃO possui CPF, telefone, endereço, gênero, foto de perfil, biografia ou
+preferências. O CPF exibido em versões antigas da interface não é armazenado.
+
+4.2 Sessão (tabela `sessoes`)
+
+A entidade Sessão representa o estado de autenticação no servidor. Cada login bem-sucedido
+gera um token aleatório de 24 bytes (48 caracteres hexadecimais), gravado em `sessoes`
+com o usuário correspondente, a data de criação e a data de expiração (30 dias).
+
+O navegador guarda esse token em localStorage e o envia no cabeçalho
+X-Pipoquetas-Token. A cada requisição protegida, o servidor consulta `sessoes` e
+`usuarios`; se o token não existir ou estiver expirado, a requisição recebe 401.
+
+A mesma tabela é reutilizada para os códigos de redefinição de senha. Nesse caso, o token
+tem o prefixo "reset:" seguido de seis dígitos (por exemplo, "reset:042317") e validade de
+15 minutos. Não existe coluna que diferencie os dois usos; a distinção é feita pelo
+prefixo do token. Também não há colunas de IP, user-agent, revogação ou último uso.
+
+4.3 Filme (tabela `filmes`)
+
+Temos a entidade Filme, que armazena o catálogo. Cada registro representa uma produção e
+guarda título, ano, duração, gêneros, classificação indicativa, nota de catálogo,
+quantidade de avaliações de catálogo, plataforma principal, caminho da imagem, sinopse,
+ID do trailer no YouTube, elenco, opções de onde assistir, filmes relacionados, diretores,
+seção de destaque, empresa responsável (quando houver), status e data de criação.
+
+Os gêneros, o elenco, as opções de onde assistir e os relacionados são armazenados como
+JSON em colunas TEXT, e não em tabelas separadas. Isso significa que não há integridade
+referencial entre um filme e seus gêneros, atores ou relacionados; esses dados são
+tratados como texto pela API e pelo front-end.
+
+O campo `status` controla a curadoria: "aprovado" (aparece no catálogo público da API),
+"pendente" (aguardando aprovação) ou "recusado". Filmes da carga inicial e filmes criados
+pelo administrador nascem "aprovado"; filmes criados ou editados por empresa ficam
+"pendente".
+
+O campo `empresa_id` é opcional. Quando preenchido, aponta logicamente para um registro de
+`usuarios` com tipo "empresa". Não há FOREIGN KEY, então o banco não impede um valor
+inválido nem reage à exclusão da empresa.
+
+O campo `imagem` guarda um caminho relativo (por exemplo,
+"assets/img-filmes/dune.png" ou "assets/img-filmes/uploads/meu-filme-a1b2c3.jpg"), nunca o
+binário da imagem. O arquivo correspondente fica no sistema de arquivos.
+
+4.4 Playlist (tabela `playlists`)
+
+Temos a entidade Playlist, que organiza filmes salvos por um usuário. Cada playlist
+pertence a exatamente um usuário e possui nome, descrição, ícone, privacidade
+("publica" ou "privada"), indicador de obrigatoriedade, tipo, data de criação e data de
+atualização.
+
+Cada usuário recebe automaticamente duas playlists obrigatórias:
+
+  - "Favoritos", tipo "favoritos", ícone "heart";
+  - "Lista de Interesses", tipo "lista-interesses", ícone "list-star".
+
+Ambas são privadas e não podem ser excluídas pela API. Playlists criadas pelo usuário
+recebem `obrigatoria = 0` e `tipo = "personalizada"`.
+
+Apesar de a regra de negócio dizer que existe uma playlist obrigatória de cada tipo por
+usuário, o banco NÃO tem uma restrição UNIQUE(usuario_id, tipo). A unicidade é garantida
+apenas pela verificação feita no código antes do INSERT. Em condição de concorrência, o
+banco poderia aceitar duplicatas.
+
+A API permite editar nome, descrição, ícone e privacidade de qualquer playlist do próprio
+usuário, inclusive das obrigatórias, embora a interface esconda a opção de edição das
+obrigatórias.
+
+4.5 Item de playlist (tabela `playlist_itens`)
+
+Temos a entidade Item de Playlist, que representa a presença de um filme dentro de uma
+playlist. É a tabela intermediária do relacionamento N:N entre `playlists` e `filmes`.
+
+Cada registro guarda a playlist, o filme e a data em que o filme foi adicionado. O par
+(playlist_id, filme_id) é único, impedindo que o mesmo filme entre duas vezes na mesma
+playlist. O mesmo filme pode estar em várias playlists e a mesma playlist pode ter vários
+filmes.
+
+Não há coluna de ordem, posição, quem adicionou ou anotação. A ordem de exibição é a ordem
+de `id` crescente. As duas playlists obrigatórias usam essa mesma tabela; não há tabela
+específica para favoritos ou lista de interesses.
+
+4.6 Avaliação (tabela `avaliacoes`)
+
+Temos a entidade Avaliação, que registra a opinião de um usuário sobre um filme. Cada
+registro guarda o filme, o usuário, uma nota inteira de 1 a 5, um texto de comentário e a
+data.
+
+O par (filme_id, usuario_id) é único: cada usuário avalia cada filme uma única vez. Se o
+usuário enviar uma nova avaliação para o mesmo filme, a API atualiza a nota, o texto e a
+data do registro existente (upsert manual). Não há histórico de versões da avaliação.
+
+A média e a quantidade exibidas na página do filme são calculadas por consulta agregada
+sobre `avaliacoes` (AVG e COUNT filtrados por filme). Elas não são gravadas de volta em
+`filmes.nota` nem em `filmes.num_avaliacoes`.
+
+Não há coluna de título, curtidas, status de moderação ou resposta. O administrador não
+tem rota para remover avaliações; a tela de moderação usa dados fictícios em memória.
+
+4.7 Notificação (tabela `notificacoes`)
+
+Temos a entidade Notificação, que representa um aviso destinado a um usuário. Cada
+registro guarda o destinatário, um tipo, um ícone, uma imagem opcional, um título opcional,
+uma descrição obrigatória, um link opcional, o indicador de lida e a data.
+
+Os tipos usados na carga inicial são "curtida", "estreia", "social", "comentario",
+"critica" e "recomendacao". O campo `titulo` existe, mas a carga inicial grava NULL e usa
+`descricao` para o texto principal.
+
+A API permite listar as notificações do usuário logado e marcar uma ou todas como lidas.
+Não há rota para criar notificações em tempo de execução; as notificações existentes vêm
+da carga inicial. Também não há interface (sino/página) no front-end atual.
+
+4.8 Metadados (tabela `pipo_meta`)
+
+A tabela `pipo_meta` não é uma entidade de negócio. É um armazenamento chave-valor usado
+para controlar a versão do esquema (`schema_version`) e a versão da carga inicial
+(`seed_version`). Também poderia guardar outras configurações internas, mas, na
+implementação atual, apenas essas duas chaves são usadas.
+
+
+===============================================================================
+5. DICIONÁRIO DE DADOS
+===============================================================================
+
+5.1 Tabela `usuarios`
+
+Finalidade: contas de cliente, empresa e administrador.
+
+  Coluna        Tipo (MySQL / SQLite)     Nulo?  Padrão     Descrição
+  ------------  -------------------------  -----  ---------  ----------------------------
+  id            INT AUTO_INCREMENT /       Não    auto       Identificador da conta
+                INTEGER PK AUTOINCREMENT
+  tipo          VARCHAR(191)               Não    —          "usuario" | "empresa" |
+                                                             "administrador"
+  nome          VARCHAR(500)               Não    —          Nome completo / razão social
+  usuario       VARCHAR(191)               Não    —          Login único (3–30 chars na API)
+  email         VARCHAR(191)               Não    —          E-mail único
+  senha_hash    VARCHAR(191)               Não    —          "bcrypt:<hash>" ou
+                                                             "cyrb53:<hex>" (legado)
+  cnpj          VARCHAR(191)               Sim    NULL       CNPJ formatado (empresa)
+  nascimento    VARCHAR(191)               Sim    NULL       Data "YYYY-MM-DD" (cliente)
+  status        VARCHAR(191)               Não    'ativo'    "ativo" | "pendente" |
+                                                             "recusado"
+  criado_em     VARCHAR(191)               Não    —          Data/hora UTC do cadastro
+
+  Restrições:
+    PRIMARY KEY (id)
+    UNIQUE (usuario)
+    UNIQUE (email)
+
+  Índices:
+    pipo_idx_usuarios_tipo (tipo, status)
+
+  Regras da aplicação:
+    - `tipo` só aceita os três valores acima; o cadastro público só cria "usuario" e
+      "empresa".
+    - Empresa nasce com status "pendente"; cliente nasce "ativo".
+    - Login é bloqueado para status "pendente" e "recusado".
+    - `senha_hash` é gerado por password_hash() com prefixo "bcrypt:". O prefixo
+      "cyrb53:" existe apenas para compatibilidade com contas antigas importadas do
+      navegador.
+    - Não há CPF, telefone, endereço, avatar ou campo de perfil.
+
+5.2 Tabela `sessoes`
+
+Finalidade: sessões de login e códigos temporários de redefinição de senha.
+
+  Coluna        Tipo                      Nulo?  Padrão  Descrição
+  ------------  ------------------------  -----  ------  ---------------------------------
+  token         VARCHAR(160)              Não    —       Token de sessão (48 hex) ou
+                                                         "reset:NNNNNN"
+  usuario_id    INT                       Não    —       Dono da sessão/código
+  criado_em     VARCHAR(191)              Não    —       Data/hora UTC de criação
+  expira_em     VARCHAR(191)              Não    —       Data/hora UTC de expiração
+
+  Restrições:
+    PRIMARY KEY (token)
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+
+  Índices:
+    pipo_idx_sessoes_usuario (usuario_id)
+
+  Regras da aplicação:
+    - Token de login: 24 bytes aleatórios (bin2hex), validade de 30 dias
+      (PIPO_SESSAO_DIAS = 30).
+    - Código de reset: token "reset:" + 6 dígitos, validade de 15 minutos.
+    - Não há coluna de tipo; o prefixo "reset:" diferencia os usos.
+    - Sessão expirada é apagada quando o token é novamente apresentado.
+    - Não há rotina automática de limpeza de sessões/códigos expirados.
+    - O logout apaga o registro do token apresentado.
+
+5.3 Tabela `filmes`
+
+Finalidade: catálogo de filmes.
+
+  Coluna              Tipo             Nulo?  Padrão       Descrição
+  ------------------  ---------------  -----  -----------  ------------------------------
+  id                  VARCHAR(160)     Não    —            Slug único do filme
+  titulo              VARCHAR(500)     Não    —            Título
+  ano                 VARCHAR(191)     Sim    NULL         Ano (texto, 4 dígitos na API)
+  duracao             VARCHAR(191)     Sim    NULL         Ex.: "2h46min"
+  generos             TEXT             Sim    NULL         JSON array de gêneros
+  classificacao       VARCHAR(191)     Sim    NULL         "L" | "10" | "12" | "14" |
+                                                            "16" | "18"
+  nota                REAL             Sim    0            Nota de catálogo (0–5)
+  num_avaliacoes      INT              Sim    0            Quantidade de catálogo (TMDB)
+  plataforma          VARCHAR(191)     Sim    NULL         Streaming principal
+  imagem              VARCHAR(500)     Sim    NULL         Caminho relativo do pôster
+  sinopse             TEXT             Sim    NULL         Texto da sinopse
+  trailer_youtube_id  VARCHAR(191)     Sim    NULL         ID do vídeo no YouTube
+  elenco              TEXT             Sim    NULL         JSON array de objetos
+                                                            {personagem, ator, foto}
+  onde_assistir       TEXT             Sim    NULL         JSON array de objetos
+                                                            {nome, logo, url, preco}
+  relacionados        TEXT             Sim    NULL         JSON array de slugs
+  diretores           VARCHAR(500)     Sim    NULL         Nomes dos diretores
+  secao               VARCHAR(191)     Sim    NULL         "recomendados" |
+                                                            "mais-assistidos"
+  empresa_id          INT              Sim    NULL         FK lógica para usuarios.id
+  status              VARCHAR(191)     Não    'aprovado'   "aprovado" | "pendente" |
+                                                            "recusado"
+  criado_em           VARCHAR(191)     Não    —            Data/hora UTC de criação
+
+  Restrições:
+    PRIMARY KEY (id)
+    Nenhuma FOREIGN KEY declarada (incluindo empresa_id).
+    Nenhum CHECK para nota, status, classificação ou ano.
+
+  Índices:
+    pipo_idx_filmes_status (status)
+    pipo_idx_filmes_empresa (empresa_id)
+    pipo_idx_filmes_titulo (titulo)
+
+  Observações:
+    - `nota` e `num_avaliacoes` vêm do catálogo (TMDB dividido por 2 e vote_count) e não
+      são atualizados quando um usuário avalia.
+    - `generos`, `elenco`, `onde_assistir` e `relacionados` são JSON serializado em TEXT.
+    - `relacionados` contém IDs de outros filmes, mas não há tabela intermediária nem FK.
+    - `secao` é usada pelo catálogo em JavaScript (home); a API pública de catálogo não a
+      expõe.
+    - `imagem` é um caminho relativo; o arquivo não fica no banco.
+    - Não há coluna de preço, visualizações, duração em minutos, país, idioma ou data de
+      atualização.
+
+5.4 Tabela `playlists`
+
+Finalidade: playlists de cada usuário.
+
+  Coluna          Tipo             Nulo?  Padrão      Descrição
+  --------------  ---------------  -----  ----------  ---------------------------------
+  id              INT auto         Não    auto        Identificador
+  usuario_id      INT              Não    —           Dono da playlist
+  nome            VARCHAR(500)     Não    —           Nome (até 80 na API)
+  descricao       TEXT             Sim    NULL        Descrição (até 300 na API)
+  icone           VARCHAR(191)     Não    'heart'     Chave do ícone
+  privacidade     VARCHAR(191)     Não    'privada'   "publica" | "privada"
+  obrigatoria     INT              Não    0           1 = obrigatória; 0 = personalizada
+  tipo            VARCHAR(191)     Sim    NULL        "favoritos" |
+                                                       "lista-interesses" |
+                                                       "personalizada"
+  criado_em       VARCHAR(191)     Não    —           Data/hora UTC de criação
+  atualizado_em   VARCHAR(191)     Não    —           Data/hora UTC da última alteração
+
+  Restrições:
+    PRIMARY KEY (id)
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    NÃO existe UNIQUE(usuario_id, tipo).
+
+  Índices:
+    pipo_idx_playlists_usuario (usuario_id)
+    pipo_idx_playlists_tipo (usuario_id, tipo)
+
+  Ícones aceitos pela API:
+    heart, list-star, star, smile, bookmark, film, bolt, rocket, trophy, users,
+    video, moon.
+
+  Observações:
+    - As duas obrigatórias são criadas por pipo_criar_playlists_obrigatorias() no
+      cadastro, na importação e como fallback ao listar favoritos/lista.
+    - A exclusão é bloqueada pela API quando obrigatoria = 1.
+    - A edição não é bloqueada pela API para obrigatórias.
+    - A privacidade "publica" permite leitura por outro usuário autenticado; não permite
+      leitura anônima.
+
+5.5 Tabela `playlist_itens`
+
+Finalidade: associação N:N entre playlists e filmes.
+
+  Coluna        Tipo             Nulo?  Padrão  Descrição
+  ------------  ---------------  -----  ------  ---------------------------------------
+  id            INT auto         Não    auto    Identificador do item
+  playlist_id   INT              Não    —       Playlist
+  filme_id      VARCHAR(160)     Não    —       Filme
+  criado_em     VARCHAR(191)     Não    —       Data/hora UTC em que foi adicionado
+
+  Restrições:
+    PRIMARY KEY (id)
+    UNIQUE (playlist_id, filme_id)
+    FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+    FOREIGN KEY (filme_id) REFERENCES filmes(id) ON DELETE CASCADE
+
+  Índices:
+    pipo_idx_itens_filme (filme_id)
+    (o par playlist_id + filme_id também é indexado pelo UNIQUE)
+
+  Observações:
+    - Não há coluna de ordem; a listagem usa ORDER BY id ASC.
+    - A adição é idempotente na API: se o par já existe, não insere de novo.
+    - O POST em /api/favoritos/{id} e /api/lista-interesses/{id} alterna (insere/remove).
+    - O DELETE em /api/playlists/{id}/itens/{filmeId} remove o par.
+
+5.6 Tabela `avaliacoes`
+
+Finalidade: avaliações de usuários sobre filmes.
+
+  Coluna        Tipo             Nulo?  Padrão  Descrição
+  ------------  ---------------  -----  ------  ---------------------------------------
+  id            INT auto         Não    auto    Identificador
+  filme_id      VARCHAR(160)     Não    —       Filme avaliado
+  usuario_id    INT              Não    —       Autor da avaliação
+  nota          INT              Não    —       Nota de 1 a 5 (validada na API)
+  texto         TEXT             Sim    NULL    Comentário (até 2000 na API)
+  criado_em     VARCHAR(191)     Não    —       Data/hora UTC (também usada como
+                                                 data da última atualização)
+
+  Restrições:
+    PRIMARY KEY (id)
+    UNIQUE (filme_id, usuario_id)
+    FOREIGN KEY (filme_id) REFERENCES filmes(id) ON DELETE CASCADE
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+
+  Índices:
+    pipo_idx_avaliacoes_usuario (usuario_id)
+    (o par filme_id + usuario_id também é indexado pelo UNIQUE)
+
+  Observações:
+    - Não há CHECK(nota BETWEEN 1 AND 5); a API valida.
+    - Não há coluna de status, curtidas, título ou resposta.
+    - Ao atualizar uma avaliação, a API sobrescreve `criado_em`, então esse campo
+      funciona como data da última edição.
+    - A média/quantidade é calculada por AVG/COUNT, não armazenada.
+
+5.7 Tabela `notificacoes`
+
+Finalidade: notificações destinadas a um usuário.
+
+  Coluna        Tipo             Nulo?  Padrão  Descrição
+  ------------  ---------------  -----  ------  ---------------------------------------
+  id            INT auto         Não    auto    Identificador
+  usuario_id    INT              Não    —       Destinatário
+  tipo          VARCHAR(191)     Não    —       Tipo da notificação
+  icone         VARCHAR(191)     Sim    NULL    Classe Font Awesome (ex.: "fa-heart")
+  imagem        VARCHAR(500)     Sim    NULL    Caminho de imagem/avatar
+  titulo        VARCHAR(500)     Sim    NULL    Título (não usado na carga inicial)
+  descricao     TEXT             Não    —       Texto principal
+  link          VARCHAR(500)     Sim    NULL    URL relativa de destino
+  lida          INT              Não    0       0 = não lida; 1 = lida
+  criado_em     VARCHAR(191)     Não    —       Data/hora UTC
+
+  Restrições:
+    PRIMARY KEY (id)
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+
+  Índices:
+    pipo_idx_notificacoes_usuario (usuario_id, lida)
+
+  Observações:
+    - Não há coluna de data de leitura.
+    - Não há rota de criação em tempo de execução.
+    - A carga inicial cria 6 notificações para cada uma das 3 contas de demonstração.
+    - A API lista em ordem decrescente de criado_em e id.
+    - `link` é uma string de URL relativa; não há FK para filmes.
+
+5.8 Tabela `pipo_meta`
+
+Finalidade: metadados internos de controle.
+
+  Coluna  Tipo          Nulo?  Padrão  Descrição
+  ------  ------------  -----  ------  ------------------------------------------
+  chave   VARCHAR(80)   Não    —       Nome do metadado (PK)
+  valor   TEXT          Sim    NULL    Valor
+
+  Restrições:
+    PRIMARY KEY (chave)
+
+  Chaves usadas:
+    schema_version -> "2"
+    seed_version   -> "2"
+
+  Observações:
+    - É criada em toda requisição com CREATE TABLE IF NOT EXISTS, antes da verificação
+      de versão.
+    - Não é exposta por nenhuma rota da API.
+
+
+===============================================================================
+6. LÓGICA RELACIONAL TEXTUAL
+===============================================================================
+
+6.1 Relacionamentos um para um (1:1)
+
+Não existe nenhum relacionamento 1:1 formalmente imposto pelo banco (com UNIQUE nas duas
+pontas ou FK compartilhando a PK).
+
+Existem apenas relações 1:1 lógicas:
+
+  - Cada usuário deve ter uma playlist obrigatória do tipo "favoritos" e uma do tipo
+    "lista-interesses". Isso é garantido pelo código, mas o banco não tem
+    UNIQUE(usuario_id, tipo); portanto, não é uma garantia relacional.
+  - Cada empresa é, ao mesmo tempo, um usuário e um perfil de empresa na mesma linha de
+    `usuarios`. Não há tabela separada de empresa, logo não há junção 1:1.
+  - Cada código de redefinição pertence a um usuário, mas um usuário pode acumular
+    vários códigos válidos simultaneamente; não é 1:1.
+
+6.2 Relacionamentos um para muitos (1:N)
+
+  - `usuarios` (1) -> (N) `sessoes`
+      Um usuário pode ter várias sessões (vários navegadores/logins). Cada sessão
+      pertence a um único usuário. FK `sessoes.usuario_id`, ON DELETE CASCADE.
+
+  - `usuarios` (1) -> (N) `playlists`
+      Um usuário pode ter várias playlists (as duas obrigatórias e quantas
+      personalizadas criar). Cada playlist pertence a um único usuário. FK
+      `playlists.usuario_id`, ON DELETE CASCADE.
+
+  - `playlists` (1) -> (N) `playlist_itens`
+      Uma playlist contém vários itens. Cada item pertence a uma única playlist. FK
+      `playlist_itens.playlist_id`, ON DELETE CASCADE.
+
+  - `filmes` (1) -> (N) `playlist_itens`
+      Um filme pode aparecer em vários itens (em playlists diferentes). Cada item
+      aponta para um único filme. FK `playlist_itens.filme_id`, ON DELETE CASCADE.
+
+  - `usuarios` (1) -> (N) `avaliacoes`
+      Um usuário pode escrever várias avaliações (uma por filme). Cada avaliação tem um
+      único autor. FK `avaliacoes.usuario_id`, ON DELETE CASCADE.
+
+  - `filmes` (1) -> (N) `avaliacoes`
+      Um filme pode receber várias avaliações. Cada avaliação aponta para um único
+      filme. FK `avaliacoes.filme_id`, ON DELETE CASCADE.
+
+  - `usuarios` (1) -> (N) `notificacoes`
+      Um usuário pode receber várias notificações. Cada notificação tem um único
+      destinatário. FK `notificacoes.usuario_id`, ON DELETE CASCADE.
+
+  - `usuarios` (1) -> (N) `filmes` (relação lógica, sem FK)
+      Uma empresa pode ser responsável por vários filmes. Cada filme tem no máximo uma
+      empresa (`filmes.empresa_id`). O banco não declara a FK; a integridade depende da
+      API.
+
+6.3 Relacionamentos muitos para muitos (N:N)
+
+  - `playlists` (N) <-> (N) `filmes`, por meio da tabela intermediária
+    `playlist_itens`.
+      Uma playlist pode conter vários filmes; um filme pode estar em várias playlists.
+      A tabela intermediária tem PK própria (`id`), as duas FKs e a data de inclusão.
+      O par (playlist_id, filme_id) é UNIQUE.
+
+  - `usuarios` (N) <-> (N) `filmes`, por meio da tabela `avaliacoes`.
+      Um usuário avalia vários filmes; um filme é avaliado por vários usuários. A tabela
+      `avaliacoes` funciona como associação N:N com atributos próprios (nota, texto,
+      data). O par (filme_id, usuario_id) é UNIQUE.
+
+  - `filmes` (N) <-> (N) `filmes`, por meio do campo JSON `relacionados`.
+      É uma relação lógica auto-referente: cada filme tem uma lista de slugs de outros
+      filmes. Não há tabela intermediária, não há FK e não há garantia de que os IDs
+      existam. O front-end resolve os IDs no catálogo em JavaScript.
+
+  - Gêneros, elenco, diretores e plataformas NÃO possuem relação N:N implementada no
+      banco. São valores textuais/JSON dentro de `filmes`, sem tabelas normalizadas.
+
+6.4 Chaves primárias
+
+  usuarios.id, playlists.id, playlist_itens.id, avaliacoes.id, notificacoes.id:
+    inteiros auto-incrementais.
+
+  filmes.id:
+    VARCHAR(160) com slug textual. É a PK e também o identificador usado nas URLs
+    (filme.html?id=...) e nas rotas (/api/filmes/{id}/...).
+
+  sessoes.token:
+    VARCHAR(160). O token é a própria chave primária.
+
+  pipo_meta.chave:
+    VARCHAR(80). Chave natural.
+
+6.5 Chaves estrangeiras
+
+  Declaradas:
+    sessoes.usuario_id          -> usuarios.id       ON DELETE CASCADE
+    playlists.usuario_id        -> usuarios.id       ON DELETE CASCADE
+    playlist_itens.playlist_id  -> playlists.id      ON DELETE CASCADE
+    playlist_itens.filme_id     -> filmes.id         ON DELETE CASCADE
+    avaliacoes.filme_id         -> filmes.id         ON DELETE CASCADE
+    avaliacoes.usuario_id       -> usuarios.id       ON DELETE CASCADE
+    notificacoes.usuario_id     -> usuarios.id       ON DELETE CASCADE
+
+  NÃO declarada:
+    filmes.empresa_id -> usuarios.id
+      A coluna existe, é usada pela aplicação e tem índice, mas não há constraint. Um
+      valor inexistente é aceito pelo banco. A API só grava o id do usuário logado
+      quando o tipo é "empresa"; o administrador grava NULL.
+
+  Não há outras FKs, nem chaves compostas além dos UNIQUE citados.
+
+6.6 Dependências entre entidades
+
+  - Sem `usuarios`, não há sessões, playlists, avaliações ou notificações.
+  - Sem `playlists`, não há `playlist_itens`.
+  - Sem `filmes`, não há `playlist_itens` nem `avaliacoes`.
+  - A exclusão de um usuário remove em cascata: suas sessões, playlists, itens dessas
+    playlists, avaliações e notificações.
+  - A exclusão de uma playlist remove em cascata seus itens, mas não os filmes.
+  - A exclusão de um filme remove em cascata seus itens de playlist e suas avaliações,
+    mas não remove o arquivo de imagem do disco.
+  - A exclusão de uma empresa (não há rota para isso) não é tratada por FK; os filmes com
+    `empresa_id` apontando para ela ficariam órfãos. Como não existe endpoint de exclusão
+    de usuário, essa situação não é alcançável pela interface atual, mas é uma fragilidade
+    estrutural.
+  - A exclusão de uma notificação não afeta outras tabelas.
+  - `pipo_meta` é independente.
+
+6.7 Regras de integridade referencial
+
+  - SQLite: `PRAGMA foreign_keys = ON` é executado em toda conexão, portanto as FKs
+    declaradas são efetivamente verificadas.
+  - MySQL: a verificação depende do engine das tabelas (InnoDB, padrão). O DDL não
+    especifica ENGINE.
+  - As FKs usam ON DELETE CASCADE; não há ON UPDATE.
+  - Não há CHECK, DEFAULT para status/tipo além dos citados, trigger, view, procedure ou
+    evento.
+  - As regras de faixa (nota 1–5), valores de status, tipo, privacidade, classificação e
+    formato de e-mail/CNPJ são validadas na API, não no banco.
+  - A unicidade de playlists obrigatórias por usuário/tipo não é garantida pelo banco.
+  - A existência do filme referenciado em `relacionados` não é garantida.
+  - A existência da empresa em `filmes.empresa_id` não é garantida.
+
+6.8 O que NÃO existe (para evitar interpretações equivocadas)
+
+  - Não há tabela `clientes`.
+  - Não há tabela `empresas`.
+  - Não há tabela `administradores`.
+  - Não há tabela `generos` nem `filme_generos`.
+  - Não há tabela `atores`, `elenco` ou `filme_elenco`.
+  - Não há tabela `diretores`.
+  - Não há tabela `plataformas`.
+  - Não há tabela `relacionados`.
+  - Não há tabela `curtidas`, `comentarios`, `seguidores` ou `mensagens`.
+  - Não há tabela `assinaturas`, `planos` ou `pagamentos`.
+  - Não há tabela `arquivos`, `imagens` ou `uploads`.
+  - Não há tabela `logs` ou `auditoria`.
+  - Não há coluna `cpf` em `usuarios`.
+  - Não há coluna `preco` em `filmes`.
+  - Não há coluna `visualizacoes` em `filmes`.
+  - Não há coluna `updated_at` em `filmes` nem em `avaliacoes`.
+  - Não há relacionamento entre `notificacoes` e `avaliacoes`/`filmes` por FK; o campo
+    `link` é apenas uma URL textual.
+
+
+===============================================================================
+7. ÍNDICES
+===============================================================================
+
+Além das chaves primárias e dos índices automáticos de UNIQUE, o esquema cria:
+
+  +--------------------------------+-----------------------------------------------+
+  | Índice                         | Colunas / finalidade                          |
+  +--------------------------------+-----------------------------------------------+
+  | pipo_idx_filmes_status         | filmes(status) — filtrar aprovados/pendentes  |
+  | pipo_idx_filmes_empresa        | filmes(empresa_id) — painel da empresa        |
+  | pipo_idx_filmes_titulo         | filmes(titulo) — ordenação/busca              |
+  | pipo_idx_playlists_usuario     | playlists(usuario_id) — playlists do usuário  |
+  | pipo_idx_playlists_tipo        | playlists(usuario_id, tipo) — achar a         |
+  |                                | obrigatória de um tipo                        |
+  | pipo_idx_itens_filme           | playlist_itens(filme_id) — itens por filme    |
+  | pipo_idx_avaliacoes_usuario    | avaliacoes(usuario_id) — histórico do usuário |
+  | pipo_idx_notificacoes_usuario  | notificacoes(usuario_id, lida) — não lidas    |
+  | pipo_idx_sessoes_usuario       | sessoes(usuario_id) — sessões por usuário     |
+  | pipo_idx_usuarios_tipo         | usuarios(tipo, status) — listagens admin      |
+  +--------------------------------+-----------------------------------------------+
+
+O DDL de índices é executado apenas quando a versão do esquema muda. Como o MySQL não
+aceita CREATE INDEX IF NOT EXISTS em todas as versões, cada criação é envolvida por
+try/catch e a exceção de índice já existente é ignorada.
+
+Os índices UNIQUE implícitos são:
+  - usuarios(usuario)
+  - usuarios(email)
+  - playlist_itens(playlist_id, filme_id)
+  - avaliacoes(filme_id, usuario_id)
+  - pipo_meta(chave) (PK)
+  - sessoes(token) (PK)
+  - filmes(id) (PK)
+
+
+===============================================================================
+8. CARGA INICIAL (SEED)
+===============================================================================
+
+A carga inicial é executada por `pipo_semear()` apenas quando `seed_version` é menor que
+PIPO_SEED_VERSAO (atualmente 2). Ela é composta por cinco etapas, nesta ordem:
+
+8.1 Usuários (`pipo_semear_usuarios`)
+
+  Cria 11 contas, se ainda não existirem pelo nome de usuário:
+
+  - 3 contas de demonstração:
+      usuario        / tipo "usuario"        / nome "Usuário Demo"
+      empresa        / tipo "empresa"        / nome "Empresa Demo"
+      administrador  / tipo "administrador"  / nome "Administrador Demo"
+
+  - 8 contas de clientes usadas como críticos nas avaliações de exemplo:
+      jorel, pessoa_feliz, carla_menezes, rafael_antunes, bruna_sales,
+      diego_alencar, patricia_rocha, thiago_lemos.
+
+  Todas recebem status "ativo", `cnpj` e `nascimento` NULL e a mesma data de criação.
+  A senha é gerada por `pipo_hash_senha()` (bcrypt). O valor da senha inicial está no
+  código e não é reproduzido aqui.
+
+8.2 Filmes (`pipo_semear_filmes`)
+
+  Lê `dados/filmes.json` e insere os filmes cujo `id` ainda não existe. Não sobrescreve
+  registros existentes, para preservar edições feitas pela administração.
+
+  Mapeamento JSON -> banco:
+    id                  -> id
+    titulo              -> titulo
+    ano                 -> ano
+    duracao             -> duracao
+    generos             -> generos (json_encode)
+    classificacao       -> classificacao
+    nota                -> nota
+    numAvaliacoes       -> num_avaliacoes
+    plataforma          -> plataforma
+    imagem              -> imagem
+    sinopse             -> sinopse
+    trailerYoutubeId    -> trailer_youtube_id
+    elenco              -> elenco (json_encode)
+    ondeAssistir        -> onde_assistir (json_encode)
+    relacionados        -> relacionados (json_encode)
+    (mapa pipo_diretores) -> diretores
+    secao               -> secao
+    —                   -> empresa_id = NULL
+    —                   -> status = "aprovado"
+
+  Campos do JSON que NÃO vão para o banco: `tmdbId` e `avaliacao` (nota TMDB de 0 a 10).
+
+  O mapa `pipo_diretores()` cobre os 75 filmes por ID e é a única fonte de diretores;
+  o JSON não possui campo de diretor.
+
+8.3 Playlists (`pipo_semear_playlists`)
+
+  Para cada usuário existente, cria as duas playlists obrigatórias se ainda não houver
+  uma do mesmo `tipo`:
+    - Favoritos (tipo "favoritos", ícone "heart", privada);
+    - Lista de Interesses (tipo "lista-interesses", ícone "list-star", privada).
+  Total atual: 11 usuários × 2 = 22 playlists.
+
+8.4 Avaliações (`pipo_semear_avaliacoes`)
+
+  Primeiro insere duas avaliações legadas:
+    - "duna-parte-2", por jorel, nota 1;
+    - "filme-1917", por pessoa_feliz, nota 4.
+
+  Depois, para cada filme que ainda não tenha nenhuma avaliação, insere 2 ou 3
+  avaliações (3 quando o índice do filme é múltiplo de 3; 2 caso contrário), escolhendo
+  autores entre os 8 críticos e notas próximas da nota de catálogo. Os textos vêm de 12
+  modelos com o título do filme interpolado.
+
+  Se o filme já tiver qualquer avaliação, nenhuma é adicionada. Total atual: 173
+  avaliações.
+
+8.5 Notificações (`pipo_semear_notificacoes`)
+
+  Para cada uma das contas "usuario", "administrador" e "empresa", se ainda não houver
+  notificações, insere 6 modelos:
+    - curtida, estreia, social, comentario, critica, recomendacao.
+  Total atual: 3 × 6 = 18 notificações.
+
+8.6 Itens de playlist
+
+  A carga inicial NÃO cria itens de playlist. Os 3 itens existentes no banco analisado
+  foram criados por uso da aplicação (favoritos/lista) e servem apenas como exemplo do
+  estado atual.
+
+
+===============================================================================
+9. CONSISTÊNCIA E OPERAÇÕES
+===============================================================================
+
+9.1 Idempotência
+
+  - A criação de tabelas e índices é idempotente.
+  - A carga inicial é controlada por versão e, dentro de cada etapa, verifica a
+    existência antes de inserir.
+  - O cadastro de filme verifica se o slug já existe e acrescenta sufixo numérico.
+  - A adição de item à playlist verifica o par antes de inserir.
+  - A avaliação verifica o par (filme, usuário) e atualiza se já existir.
+
+9.2 Transações
+
+  Não há uso de beginTransaction/commit/rollBack em nenhum arquivo da API. Cada operação
+  é executada como comando isolado. Consequências:
+
+  - Se uma operação composta falhar no meio (por exemplo, criar usuário e depois criar
+    playlists), pode restar um usuário sem as playlists obrigatórias. O fallback de
+    `pipo_rota_lista_tipo` recria as playlists quando necessário.
+  - Inserções concorrentes podem gerar violação de UNIQUE e resposta 500, pois a
+    verificação prévia e o INSERT não são atômicos.
+  - A exclusão em cascata é atômica por comando, mas não há transação envolvendo várias
+    tabelas em uma mesma regra de negócio.
+
+9.3 Datas
+
+  Todas as datas são gravadas em UTC via `gmdate('Y-m-d H:i:s')`. A interface converte
+  para o formato brasileiro apenas na exibição (quando aplicável). Não há conversão de
+  fuso no back-end.
+
+9.4 Exclusões e arquivos
+
+  - Excluir um filme remove itens de playlist e avaliações por cascata, mas NÃO remove
+    o arquivo de imagem em `assets/img-filmes/` nem em `assets/img-filmes/uploads/`.
+  - Excluir uma playlist remove seus itens, mas não os filmes.
+  - Não há exclusão de usuário pela API.
+  - Não há limpeza de imagens órfãs, sessões expiradas ou códigos de reset expirados.
+
+9.5 Concorrência
+
+  - SQLite usa WAL e busy_timeout de 5 s para permitir leituras concorrentes e reduzir
+    erros de bloqueio.
+  - MySQL usa o comportamento padrão do engine.
+  - O servidor PHP embutido, por padrão, atende uma requisição por vez; isso reduz
+    concorrência real no ambiente de demonstração.
+  - Não há controle otimista/pessimista nas atualizações.
+
+
+===============================================================================
+10. ESTADO ATUAL DO BANCO ANALISADO
+===============================================================================
+
+Inspeção direta de dados/pipoquetas.sqlite em 13/11/2026:
+
+  pipo_meta .........: 2 registros
+  usuarios ..........: 11 registros (3 demonstração + 8 críticos)
+  sessoes ...........: 3 registros
+  filmes ............: 75 registros, todos com status "aprovado" e empresa_id NULL
+  playlists .........: 22 registros (2 por usuário)
+  playlist_itens ....: 3 registros
+  avaliacoes ........: 173 registros
+  notificacoes ......: 18 registros
+
+  Versões:
+    schema_version = 2
+    seed_version   = 2
+
+  Todos os filmes atuais são da carga inicial; não há filme cadastrado por empresa ou
+  pelo administrador no estado analisado. Todos os `filmes.empresa_id` são NULL.
+
+  Exemplos de registros:
+    usuarios.id=1  tipo=usuario        usuario=usuario
+    usuarios.id=2  tipo=empresa        usuario=empresa
+    usuarios.id=3  tipo=administrador  usuario=administrador
+    filmes.id="duna-parte-2" / titulo="Duna: Parte 2" / nota=4.1
+    playlists.id=1 usuario_id=3 tipo="favoritos" obrigatoria=1
+    avaliacoes.id=1 filme_id="duna-parte-2" usuario_id=4 nota=1
+
+Esses números são um retrato do estado; podem mudar com o uso da aplicação.
+
+
+===============================================================================
+11. LIMITAÇÕES E PONTOS QUE EXIGEM VERIFICAÇÃO
+===============================================================================
+
+  1. `filmes.empresa_id` não tem FOREIGN KEY. A integridade é apenas lógica.
+  2. Não há UNIQUE(usuario_id, tipo) em `playlists`; as playlists obrigatórias podem, em
+     tese, ser duplicadas por concorrência.
+  3. Não há CHECK para `avaliacoes.nota` (1–5), `usuarios.tipo/status`,
+     `filmes.status`, `playlists.privacidade` ou `playlist_itens`. A validação é da API.
+  4. Não há transações; operações compostas podem deixar estado parcial.
+  5. Não há migrações ALTER TABLE; mudanças de coluna exigem recriação/manual.
+  6. `filmes.nota` e `filmes.num_avaliacoes` não refletem as avaliações reais.
+  7. `filmes.relacionados` não tem integridade referencial.
+  8. Gêneros, elenco e onde assistir são JSON, não tabelas normalizadas; não é possível
+     consultar “todos os filmes de um ator” por SQL sem processar JSON.
+  9. Não há histórico de avaliações; a atualização sobrescreve o registro.
+  10. `sessoes` mistura tokens de login e códigos de reset sem uma coluna de tipo.
+  11. Não há limpeza automática de sessões/códigos expirados.
+  12. Não há tabela de arquivos/imagens; o banco só guarda o caminho.
+  13. Não há auditoria, logs ou controle de quem alterou o quê.
+  14. Não há suporte a assinaturas/pagamentos, embora exista a página de planos.
+  15. Não há tabela de notificações lidas com data; só o flag `lida`.
+  16. Não há índice específico para busca textual em sinopse/título; a busca do Explore
+      é feita no JavaScript, sobre o catálogo local.
+  17. O MySQL e o SQLite compartilham o mesmo DDL lógico, mas os tipos não são
+      idênticos (VARCHAR com limite no MySQL; tipagem dinâmica no SQLite; REAL/DOUBLE).
+  18. O banco pode ficar acessível publicamente no modo Apache, pois está em `dados/`
+      dentro da raiz web. O bloqueio de `servidor-router.php` só vale para o PHP
+      embutido.
+
+Não foram identificadas, no esquema nem no código, tabelas ou colunas para:
+CPF, telefone, endereço, gênero do usuário, foto de perfil, seguidores, curtidas,
+comentários independentes, assinaturas, pagamentos, preço de filme, visualizações,
+países, idiomas, trilhas sonoras, prêmios ou disponibilidade por região.
+
+
+===============================================================================
+12. CHECKLIST DE VERIFICAÇÃO PARA MANUTENÇÃO
+===============================================================================
+
+Ao alterar o banco:
+
+  [ ] Atualizar o DDL em api/db.php.
+  [ ] Incrementar PIPO_ESQUEMA_VERSAO.
+  [ ] Como não há ALTER TABLE, definir se o banco será recriado ou migrado manualmente.
+  [ ] Atualizar os SELECT/INSERT/UPDATE das rotas afetadas.
+  [ ] Atualizar os mapeamentos de api/rotas/filmes.php e playlists.php.
+  [ ] Verificar o impacto nas cascatas (excluir filme/playlist/usuário).
+  [ ] Verificar se o front-end espera o campo em algum JSON.
+  [ ] Atualizar esta documentação e o README.md.
+  [ ] Testar nos dois drivers (SQLite e MySQL), se ambos forem suportados.
+  [ ] Fazer backup do arquivo SQLite antes de qualquer recriação.
+
+===============================================================================
+FIM DO DOCUMENTO
+===============================================================================

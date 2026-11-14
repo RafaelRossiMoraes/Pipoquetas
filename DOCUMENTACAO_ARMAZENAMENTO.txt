@@ -1,0 +1,1031 @@
+===============================================================================
+DOCUMENTACAO_ARMAZENAMENTO.txt
+PIPOQUETAS — Documentação de armazenamento de dados
+===============================================================================
+
+Projeto ............: Pipoquetas 1.1
+Data da análise ....: 13/11/2026
+Objetivo ...........: descrever onde cada dado da aplicação é guardado, em que
+                      formato, por quanto tempo, como se relaciona com os demais
+                      armazenamentos e quais são os riscos de exposição
+
+Fontes verificadas .: api/db.php, api/auth.php, api/rotas/*.php;
+                      js/api.js, js/app.js, js/index.js e demais scripts;
+                      dados/pipoquetas.sqlite (inspeção direta);
+                      dados/filmes.json, js/dados-filmes.js;
+                      assets/ (contagem e tamanho dos arquivos);
+                      servidor.ps1, servidor-router.php, .gitignore;
+                      gerar_dados_filmes.py.
+
+Documentos irmãos .: README.md — visão geral e instalação;
+                      DOCUMENTACAO_BANCO_DE_DADOS.txt — esquema e dicionário;
+                      ANALISE_DE_SISTEMAS.txt — requisitos, regras e arquitetura.
+
+Este documento não repete o dicionário completo das tabelas. Ele responde a
+perguntas de armazenamento: o que fica no banco, o que fica em arquivo, o que fica
+no navegador, o que é remoto e o que se perde ao limpar cada um desses locais.
+
+
+===============================================================================
+1. VISÃO GERAL
+===============================================================================
+
+A Pipoquetas usa cinco lugares distintos para guardar informação:
+
+  1. Banco de dados relacional
+     SQLite (padrão) ou MySQL/MariaDB (opcional). Guarda contas, sessões, filmes,
+     playlists, avaliações, notificações e metadados de versão.
+
+  2. Arquivos do projeto
+     Catálogo mestre em JSON, catálogo JavaScript consumido pela interface,
+     pôsteres, fotos de elenco, logos, imagens de hero, fontes e imagens enviadas
+     pelos painéis.
+
+  3. Armazenamento do navegador
+     localStorage e sessionStorage para token de sessão, cache do usuário, tema,
+     plano escolhido, flag de migração e contas legadas.
+
+  4. Estado de execução no servidor
+     Cache do driver de banco em `dados/.pipo_driver`. Não é dado de negócio.
+
+  5. Serviços externos
+     YouTube (trailers), image.tmdb.org (fotos e logos remotos), Font Awesome
+     (ícones) e sites de streaming (links). Nada disso é armazenado pelo servidor,
+     exceto as URLs e os ids de trailer.
+
+Princípio importante: o banco NÃO guarda imagens em BLOB. Ele guarda caminhos
+relativos, como `assets/img-filmes/dune.png`, e o arquivo correspondente vive no
+disco. Da mesma forma, o catálogo visual não vem do banco: vem de um arquivo
+JavaScript separado.
+
+
+===============================================================================
+2. INVENTÁRIO RESUMIDO
+===============================================================================
+
+  +-------------------------------+-------------------------------------------+
+  | Armazenamento                 | O que contém                              |
+  +-------------------------------+-------------------------------------------+
+  | dados/pipoquetas.sqlite       | Banco SQLite completo (8 tabelas)         |
+  | MySQL "pipoquetas" (opcional) | O mesmo modelo, quando o MySQL está ativo |
+  | dados/.pipo_driver            | Driver e horário da verificação           |
+  | dados/filmes.json             | Catálogo mestre de 75 filmes              |
+  | js/dados-filmes.js            | Cópia do catálogo usada pela interface    |
+  | assets/img-filmes/            | 75 pôsteres + placeholder                 |
+  | assets/img-filmes/uploads/    | Imagens enviadas pelos painéis            |
+  | assets/img-elenco/            | 12 fotos locais de atores                 |
+  | assets/img-hero/              | 3 imagens do hero da home                 |
+  | assets/img_class/             | 6 indicadores de classificação            |
+  | assets/img-logos/             | 8 logos locais de plataformas             |
+  | assets/logos/                 | 2 logotipos do projeto                    |
+  | assets/fonts/                 | 1 fonte Ethnocentric                      |
+  | assets/avatar.png, avatar2.png| Avatares padrão                           |
+  | assets/bg-img.png             | Imagem de fundo                           |
+  | localStorage                  | Token, tema, plano, flag e contas legadas |
+  | sessionStorage                | Cache do usuário por 5 minutos            |
+  | YouTube / image.tmdb.org      | Conteúdo remoto referenciado por URL      |
+  +-------------------------------+-------------------------------------------+
+
+Nada é gravado em cookie, IndexedDB, Cache API, Service Worker, memória de sessão
+PHP (`$_SESSION`), fila, cache distribuído ou storage de objetos.
+
+
+===============================================================================
+3. BANCO DE DADOS
+===============================================================================
+
+3.1 SQLite (padrão)
+
+  Arquivo ........: dados/pipoquetas.sqlite
+  Driver PDO .....: sqlite
+  Estado .........: criado na primeira execução, se não existir
+  Codificação ....: UTF-8 (padrão do SQLite)
+  Modo de diário .: WAL (`journal_mode = WAL`)
+  Sincronização ..: NORMAL
+  Chaves estrangeiras: ativadas por conexão (`PRAGMA foreign_keys = ON`)
+  Timeout de lock : 5000 ms (`busy_timeout`)
+  Tamanho atual ..: 327.680 bytes (320 KB), em 13/11/2026
+
+  Durante o uso podem aparecer, ao lado do arquivo principal:
+
+    dados/pipoquetas.sqlite-wal   transações recentes ainda não consolidadas
+    dados/pipoquetas.sqlite-shm   memória compartilhada do WAL
+
+  Esses dois arquivos são transitórios. Ao copiar o banco com o servidor em
+  execução, é preciso copiá-los junto ou fazer um checkpoint antes. A forma mais
+  segura é parar o servidor e copiar o conjunto, ou usar o comando de backup do
+  SQLite.
+
+  O arquivo está dentro da pasta do projeto. No modo PHP embutido, o roteador
+  bloqueia `/dados/`; no modo Apache, não há essa proteção automática.
+
+3.2 MySQL/MariaDB (opcional)
+
+  Host ...........: 127.0.0.1
+  Porta ..........: 3306
+  Banco ..........: pipoquetas
+  Charset ........: utf8mb4
+  Collation ......: utf8mb4_unicode_ci
+  Driver PDO .....: mysql
+  Criação ........: automática, quando o serviço responde
+  Credenciais ....: fixas no código (configuração padrão do XAMPP). Não são
+                    reproduzidas neste documento.
+
+  Quando o MySQL é usado, o arquivo SQLite pode continuar no disco, mas não é a
+  fonte ativa. Isso pode confundir a manutenção: os dois bancos podem ter estados
+  diferentes. O arquivo `dados/.pipo_driver` indica qual foi escolhido na última
+  verificação.
+
+3.3 O que fica no banco
+
+  +------------------+--------------------------------------------------------+
+  | Tabela           | Conteúdo armazenado                                    |
+  +------------------+--------------------------------------------------------+
+  | usuarios         | Contas de cliente, empresa e administrador; nome,      |
+  |                  | usuário, e-mail, hash de senha, CNPJ, nascimento,      |
+  |                  | status e data de cadastro                              |
+  | sessoes          | Tokens de sessão e códigos de redefinição de senha     |
+  | filmes           | Catálogo persistido, incluindo os 75 filmes da carga   |
+  |                  | inicial e os filmes criados pelos painéis              |
+  | playlists        | Favoritos, Lista de Interesses e playlists             |
+  |                  | personalizadas, com privacidade, ícone e tipo          |
+  | playlist_itens   | Relação N:N entre playlists e filmes                   |
+  | avaliacoes       | Nota (1 a 5), texto, usuário, filme e data             |
+  | notificacoes     | Notificações por usuário, com tipo, título, descrição, |
+  |                  | link, imagem e flag de leitura                         |
+  | pipo_meta        | schema_version e seed_version                          |
+  +------------------+--------------------------------------------------------+
+
+  Dados que NÃO ficam no banco:
+
+    - imagens (ficam em arquivo; o banco guarda o caminho);
+    - catálogo exibido na home/Explore/detalhe (fica em js/dados-filmes.js);
+    - tema e plano (ficam no localStorage);
+    - token no navegador (o banco guarda a sessão, não o localStorage);
+    - chave da TMDB (fica em arquivo/variável de ambiente do gerador);
+    - logs, métricas e auditoria (não existem).
+
+3.4 Dados sem estrutura relacional dentro do banco
+
+  Alguns campos de `filmes` são TEXT com JSON embutido:
+
+    generos ........ JSON array de strings, por exemplo ["Drama","Romance"]
+    elenco ......... JSON array de objetos {personagem, ator, foto}
+    onde_assistir .. JSON array de objetos {nome, logo, url, preco}
+    relacionados ... JSON array de ids de filmes
+
+  Isso não é um defeito de armazenamento em si, mas significa que esses dados não
+  podem ser consultados por SQL relacional sem funções de JSON. Gêneros, atores,
+  plataformas e relações não têm tabelas próprias. O dicionário detalhado está em
+  DOCUMENTACAO_BANCO_DE_DADOS.txt.
+
+3.5 Cache do driver
+
+  Arquivo ........: dados/.pipo_driver
+  Formato ........: JSON
+  Exemplo ........: {"driver":"sqlite","verificado":1760000000}
+  Validade .......: 1 hora (3600 segundos)
+  Gravado por ....: `pipo_driver()` em api/db.php
+  Apagado por ....: servidor.ps1, a cada inicialização
+
+  Não contém dado de usuário. Se for apagado, o sistema testa a porta 3306 e
+  escolhe o driver novamente. Não deve ser versionado (está no .gitignore).
+
+3.6 Sessões e códigos de redefinição
+
+  Ficam na mesma tabela `sessoes`:
+
+    - token de login: 48 caracteres hexadecimais, validade de 30 dias;
+    - código de redefinição: token com prefixo `reset:`, validade de 15 minutos.
+
+  Sessões expiradas só são apagadas quando alguém tenta usá-las. Códigos de
+  redefinição expirados não têm rotina de limpeza periódica. Não há índice de
+  expiração; o volume é pequeno no uso local, mas cresce sem coleta automática.
+
+
+===============================================================================
+4. CATÁLOGO ESTÁTICO
+===============================================================================
+
+4.1 dados/filmes.json
+
+  Papel ..........: catálogo mestre, usado pela carga inicial do banco e como
+                    entrada do gerador
+  Formato ........: JSON com array de objetos
+  Tamanho ........: 182.457 bytes (≈178 KB), em 13/11/2026
+  Quantidade .....: 75 filmes
+  Versionamento ..: rastreado pelo projeto (não está no .gitignore)
+  Quem escreve ...: gerar_dados_filmes.py (manualmente ou por execução do script)
+  Quem lê ........: `pipo_semear_filmes()` em api/db.php; o gerador
+
+  Cada filme contém, tipicamente:
+
+    id, titulo, ano, duracao, generos[], classificacao, avaliacao, nota,
+    numAvaliacoes, plataforma, imagem, secao, sinopse, trailerYoutubeId,
+    elenco[], ondeAssistir[], relacionados[], tmdbId
+
+  Observações:
+
+    - `avaliacao` é a nota da TMDB em escala 0–10;
+    - `nota` é a nota exibida pela interface, em escala 0–5;
+    - `numAvaliacoes` é um metadado de catálogo, não a contagem real do banco;
+    - `imagem` aponta para um pôster local em `assets/img-filmes/`;
+    - `elenco[].foto` pode ser local ou remoto;
+    - `ondeAssistir[].logo` pode ser local ou remoto;
+    - `secao` separa "recomendados" do restante na home;
+    - não há campo de diretores no JSON: eles vêm do mapa `pipo_diretores()`
+      em api/db.php, aplicado apenas na carga inicial do banco;
+    - `duracao`, `elenco`, `ondeAssistir`, `relacionados` e `trailerYoutubeId`
+      não estão presentes em todos os 75 objetos (o trailer tem id em 65).
+
+4.2 js/dados-filmes.js
+
+  Papel ..........: cópia do catálogo consumida pela interface
+  Formato ........: JavaScript com `const filmesData = [...]`
+  Tamanho ........: 182.535 bytes (≈178 KB), em 13/11/2026
+  Quantidade .....: 75 filmes
+  Quem escreve ...: gerar_dados_filmes.py; também pode ser editado à mão
+  Quem lê ........: index.js, explore.js e filme.js
+
+  A primeira linha do arquivo diz "Gerado por gerar_dados_filmes.py. Não edite à
+  mão.", mas o arquivo é editável e é a fonte real da vitrine. Se for editado
+  manualmente, o próximo ciclo do gerador pode sobrescrever a alteração.
+
+4.3 Duplicação e sincronização
+
+  O mesmo catálogo aparece em três lugares:
+
+    dados/filmes.json  ->  carga inicial  ->  tabela filmes
+    dados/filmes.json  ->  gerador        ->  js/dados-filmes.js
+
+  Consequências:
+
+    - o banco e a vitrine podem divergir;
+    - um filme criado pelo painel existe no banco, mas não na vitrine;
+    - um filme removido do banco continua na vitrine;
+    - uma alteração de título no painel não altera o card da home;
+    - o gerador não atualiza o banco: ele só reescreve o JSON e o JS.
+
+  Para manter os dois lados alinhados, é preciso regenerar o JS, reiniciar a carga
+  inicial (ou inserir manualmente) e garantir que os ids coincidam.
+
+4.4 O que não está no catálogo estático
+
+  As imagens não são embutidas no JSON: são caminhos. O JSON guarda apenas strings
+  como `assets/img-filmes/dune.png` e URLs externas. O conteúdo binário vive em
+  `assets/` ou é baixado do host remoto pelo navegador.
+
+
+===============================================================================
+5. IMAGENS E DEMAIS ARQUIVOS DO PROJETO
+===============================================================================
+
+5.1 Pôsteres dos filmes
+
+  Pasta ..........: assets/img-filmes/
+  Arquivos .......: 76 (75 pôsteres + placeholder.svg)
+  Tamanho ........: ≈9.065 KB (≈8,9 MB)
+  Formatos .......: JPG, PNG e SVG
+  Referência .....: campo `imagem` de cada filme no JSON/JS e no banco
+  Cache HTTP .....: imagens recebem Cache-Control de 7 dias no roteador local
+
+  Todos os 75 pôsteres da carga inicial são locais. Não há pôster remoto na
+  vitrine atual. O placeholder é usado quando o caminho enviado é inválido.
+
+5.2 Fotos de elenco
+
+  Pasta local ....: assets/img-elenco/
+  Arquivos .......: 12 fotos
+  Tamanho ........: ≈2.004 KB (≈2,0 MB)
+  Referências ....: 26 usos de imagens locais (12 fotos + avatar.png em 14 usos)
+  Referências remotas: 375 URLs em image.tmdb.org
+
+  Ou seja: a maior parte das fotos de elenco é remota. Se o navegador estiver
+  offline ou o host da TMDB bloquear a requisição, essas fotos não aparecem. As
+  12 fotos locais são usadas uma vez cada; quando o ator não tem foto, o catálogo
+  aponta para `assets/avatar.png`.
+
+5.3 Hero, classificação, logos e identidade
+
+  +---------------------------+----------+---------------+---------------------+
+  | Pasta/arquivo             | Arquivos | Tamanho aprox.| Uso                 |
+  +---------------------------+----------+---------------+---------------------+
+  | assets/img-hero/          | 3        | 388 KB        | Slides da home      |
+  | assets/img_class/         | 6        | 28 KB         | L, 10 a 18          |
+  | assets/img-logos/         | 8        | 188 KB        | Plataformas locais  |
+  | assets/logos/             | 2        | 168 KB        | Logo branca e 2DSB  |
+  | assets/fonts/             | 1        | 68 KB         | Fonte Ethnocentric  |
+  | assets/avatar.png         | 1        | 31 KB         | Avatar padrão       |
+  | assets/avatar2.png        | 1        | 7 KB          | Avatar alternativo  |
+  | assets/bg-img.png         | 1        | 204 KB        | Fundo               |
+  +---------------------------+----------+---------------+---------------------+
+
+  Os logos locais de plataforma são usados 20 vezes no catálogo, mas apenas 6 dos
+  8 arquivos da pasta aparecem nele (`google-play.png` e `netflix.png` não são
+  referenciados). Além deles, há 157 referências a logos remotos em
+  image.tmdb.org. Os ícones da interface vêm do Font Awesome por CDN e não são
+  armazenados no projeto.
+
+5.4 Imagens enviadas pelos painéis
+
+  Pasta ..........: assets/img-filmes/uploads/
+  Conteúdo atual .: apenas `.gitkeep` (nenhuma imagem enviada em 13/11/2026)
+  Formato ........: JPG, PNG, WEBP ou GIF
+  Limite .........: 4 MB por arquivo
+  Nome ...........: slug do nome original + 6 bytes aleatórios + extensão real
+  Gravação .......: `file_put_contents()` em api/rotas/filmes.php
+  Metadado .......: o caminho é gravado em `filmes.imagem`
+  Cache HTTP .....: 7 dias
+  Versionamento ..: o .gitignore ignora o conteúdo, mantendo apenas .gitkeep
+
+  Não há exclusão automática. Se o filme for removido ou a imagem for trocada, o
+  arquivo antigo permanece no disco. Não há verificação de espaço, antivírus,
+  redimensionamento ou conversão.
+
+  O upload não usa `multipart/form-data` nem `$_FILES`: o navegador lê o arquivo
+  com FileReader, envia uma data URL base64 em JSON e o PHP grava o binário. Por
+  isso, não há arquivo temporário de upload do PHP envolvido.
+
+5.5 Cache de arquivos estáticos
+
+  O roteador do servidor embutido envia:
+
+    HTML ............ Cache-Control: no-cache, must-revalidate
+    imagens/fontes .. Cache-Control: public, max-age=604800 (7 dias)
+    CSS/JS/JSON/TXT . Cache-Control: public, max-age=300, must-revalidate
+
+  Também usa ETag e gzip para textos acima de 1 KB. Consequência prática: substituir
+  um pôster pode não refletir imediatamente no navegador que já o tinha em cache;
+  um recarregamento forçado resolve.
+
+  No modo somente estático do PowerShell, o cache é semelhante (7 dias para imagens,
+  5 minutos para CSS/JS, HTML sem cache), com ETag, mas sem gzip.
+
+
+===============================================================================
+6. ARMAZENAMENTO NO NAVEGADOR
+===============================================================================
+
+6.1 localStorage
+
+  O localStorage é por origem (esquema + host + porta). Trocar de `localhost:8080`
+  para `localhost` (Apache) cria outro armazenamento: o usuário parece deslogado e
+  perde tema/plano.
+
+  +-----------------------------+--------------------------------------+----------+
+  | Chave                       | Conteúdo                             | Quem usa |
+  +-----------------------------+--------------------------------------+----------+
+  | pipo_sessao_token           | Token de sessão (48 hex) ou vazio    | api.js   |
+  | pipo_migrado_bd             | "1" depois da migração de contas     | api.js   |
+  | pipo_clientes               | Array JSON de contas legadas         | api.js   |
+  | pipoquetas-tema             | "claro" ou "escuro"                  | app.js   |
+  | pipoquetas-plano            | "bronze", "prata" ou "ouro"          | index.js |
+  +-----------------------------+--------------------------------------+----------+
+
+  Detalhes:
+
+    pipo_sessao_token
+      - gravado no login/cadastro e apagado no logout;
+      - não tem prazo próprio no navegador: quem controla a validade é o servidor,
+        pela coluna `sessoes.expira_em` (30 dias);
+      - se o token expirar, a próxima chamada devolve 401 e o usuário precisa
+        entrar de novo;
+      - fica legível por qualquer JavaScript da origem, o que é um risco de XSS.
+
+    pipo_migrado_bd
+      - flag para não repetir a importação de contas antigas;
+      - só é gravada quando a importação termina com sucesso;
+      - se a importação falhar, a flag não é gravada e a tentativa recomeça na
+        próxima página; dentro da mesma página, porém, a promessa já resolvida
+        impede um novo envio.
+
+    pipo_clientes
+      - estrutura legada de contas mantida no navegador;
+      - pode conter nome, usuário, e-mail, hash de senha, tipo, CNPJ, nascimento,
+        status e data de criação;
+      - é lida uma vez e importada para o banco, mas NÃO é apagada depois;
+      - por conter hashes, é um resíduo sensível que deveria ser removido após a
+        migração bem-sucedida.
+
+    pipoquetas-tema
+      - preferência visual; não afeta o servidor;
+      - se o localStorage estiver bloqueado, o tema volta ao padrão claro.
+
+    pipoquetas-plano
+      - preferência visual do card de plano;
+      - não representa assinatura, cobrança ou permissão.
+
+6.2 sessionStorage
+
+  +-----------------------------+--------------------------------------+----------+
+  | Chave                       | Conteúdo                             | Quem usa |
+  +-----------------------------+--------------------------------------+----------+
+  | pipo_usuario_cache_v1       | {exp, usuario, nao_lidas}            | app.js   |
+  +-----------------------------+--------------------------------------+----------+
+
+  - Validade: 5 minutos (`CACHE_MS`).
+  - Serve para pintar o header e o menu sem esperar GET /api/eu a cada página.
+  - É limpo no logout.
+  - Fecha ao fechar a aba/navegador, conforme o comportamento do sessionStorage.
+  - Não contém senha nem hash; contém os dados públicos do usuário e o contador de
+    notificações.
+
+6.3 O que não existe no navegador
+
+  - Cookies de sessão ou de preferência.
+  - IndexedDB.
+  - Cache API ou Service Worker.
+  - Armazenamento offline das páginas ou do catálogo.
+  - Sincronização entre abas (não há listener de `storage`).
+
+  Se o navegador estiver em modo privado ou bloquear storage, o código captura a
+  exceção e continua, mas sem persistir token, tema, plano ou migração. O login
+  pode funcionar na aba atual e ser perdido ao navegar/fechar.
+
+6.4 Limpeza e impacto
+
+  +----------------------------------+-------------------------------------------+
+  | Ação                             | Efeito                                    |
+  +----------------------------------+-------------------------------------------+
+  | Limpar dados do site             | Remove token, tema, plano, cache e contas |
+  |                                  | legadas; o banco não é afetado            |
+  | Fechar o navegador               | Perde sessionStorage; banco permanece     |
+  |                                  | localStorage permanece                    |
+  | Logout                           | Remove token e cache do usuário; mantém   |
+  |                                  | tema, plano, flag e contas legadas        |
+  | Trocar de porta/host             | Novo armazenamento; parece deslogado      |
+  | Limpar apenas cookies            | Nada muda (o sistema não usa cookies)     |
+  +----------------------------------+-------------------------------------------+
+
+  Limpar o localStorage NÃO apaga favoritos, playlists, avaliações ou contas: esses
+  dados estão no banco. Apenas o token e as preferências locais se perdem.
+
+
+===============================================================================
+7. ARMAZENAMENTO EXTERNO
+===============================================================================
+
+7.1 Inventário
+
+  +------------------------+----------------------------------+--------------------+
+  | Serviço/recurso        | Dado referenciado                | Armazenado pelo    |
+  |                        |                                  | projeto?           |
+  +------------------------+----------------------------------+--------------------+
+  | Font Awesome (CDN)     | CSS e fontes de ícones           | Não; só a URL      |
+  | YouTube                | Id do vídeo do trailer           | Sim, o id; o vídeo |
+  |                        |                                  | fica no YouTube    |
+  | image.tmdb.org         | 375 fotos de elenco e 157 logos  | Não; só as URLs    |
+  | Sites de streaming     | URLs de "Onde Assistir"          | Sim, as URLs       |
+  | TMDB API v3            | Catálogo usado na geração        | Não em runtime; o  |
+  |                        |                                  | resultado vira JSON|
+  | Navegador do usuário   | Cache HTTP das imagens remotas   | Cache local, sem   |
+  |                        |                                  | controle do app    |
+  +------------------------+----------------------------------+--------------------+
+
+7.2 Dependência de rede
+
+  - A home e o Explore funcionam sem internet para os dados e os pôsteres locais.
+  - O tema e os ícones: os ícones do Font Awesome vêm de CDN; sem rede, somem.
+  - O trailer só carrega com internet; em `file://`, abre em nova aba.
+  - Fotos de elenco e logos remotos não aparecem offline.
+  - Os links de "Onde Assistir" só funcionam ao clicar e dependem do site externo.
+  - O gerador Python depende da TMDB e da chave; não é usado em runtime.
+
+7.3 Dados que o projeto não controla
+
+  O YouTube, a TMDB, o Font Awesome e os sites de streaming podem registrar IP,
+  user-agent, cookies próprios e métricas. A Pipoquetas não tem política de
+  privacidade nem consentimento para esses acessos. Em uma operação real, isso
+  precisaria ser tratado.
+
+7.4 Chave da TMDB
+
+  O gerador lê a chave de:
+
+    1. arquivo `tmdb_chave.txt` na raiz do projeto; ou
+    2. variável de ambiente `TMDB_CHAVE`.
+
+  O arquivo não existe no snapshot atual. Ele não está no .gitignore, apesar de o
+  comentário do script afirmar que está. Se for criado, deve ficar fora do
+  versionamento e não deve ser servido pela web.
+
+  No modo PHP embutido, o roteador bloqueia dotfiles, `dados/` e as extensões
+  `.sqlite`, `.bat`, `.ps1`, `.py` e `.log`, mas NÃO bloqueia especificamente
+  `tmdb_chave.txt`. No modo somente estático do PowerShell, esse nome é bloqueado
+  explicitamente. A diferença é um risco a corrigir.
+
+
+===============================================================================
+8. RELAÇÕES ENTRE OS ARMAZENAMENTOS
+===============================================================================
+
+8.1 Diagrama
+
+  +-------------------------+          +------------------------------+
+  | dados/filmes.json       |          | js/dados-filmes.js           |
+  | catálogo mestre (75)    |--------->| catálogo da vitrine (75)     |
+  +------------+------------+  gera    +---------------+--------------+
+               |                                         |
+               | carga inicial                           | lido por
+               v                                         v
+  +-------------------------+          +------------------------------+
+  | Banco: tabela filmes    |          | Home / Explore / Detalhe     |
+  | id, título, status...   |          | (HTML + JS)                  |
+  +------------+------------+          +---------------+--------------+
+               ^                                         |
+               | id do filme                             | token + chamadas
+               |                                         v
+  +------------+------------+          +------------------------------+
+  | playlists / itens       |<---------| js/api.js -> API PHP         |
+  | avaliações/notif.       |          | X-Pipoquetas-Token           |
+  +------------+------------+          +---------------+--------------+
+               ^                                         |
+               | usuario_id                              | token
+               |                                         v
+  +------------+------------+          +------------------------------+
+  | usuarios / sessoes      |<---------| localStorage                 |
+  | (contas e tokens)       |          | pipo_sessao_token            |
+  +-------------------------+          +------------------------------+
+
+  +-------------------------+          +------------------------------+
+  | assets/img-filmes/      |<---------| filmes.imagem (caminho)      |
+  | pôsteres e uploads      |          | catálogo JSON (caminho)      |
+  +-------------------------+          +------------------------------+
+
+  +-------------------------+          +------------------------------+
+  | image.tmdb.org          |<---------| URLs em elenco[].foto e      |
+  | fotos e logos remotos   |          | ondeAssistir[].logo          |
+  +-------------------------+          +------------------------------+
+
+8.2 Relações explicadas
+
+  1. JSON -> banco
+     A carga inicial lê `dados/filmes.json` e insere os filmes que ainda não
+     existem em `filmes`. O id do JSON é a chave primária no banco. Se o id já
+     existe, o registro não é sobrescrito.
+
+  2. JSON -> JS -> vitrine
+     O gerador produz `js/dados-filmes.js` a partir do JSON. A vitrine lê o JS.
+     Não há chamada à API para montar a home, o Explore ou o detalhe.
+
+  3. Banco -> API -> playlists e avaliações
+     Playlists guardam ids de filmes; avaliações guardam id de filme e id de
+     usuário. A API resolve esses ids na tabela `filmes` e devolve os dados
+     públicos. Se o filme for removido, os itens e avaliações caem por cascata.
+
+  4. Usuário -> sessão -> token no navegador
+     O login cria uma linha em `sessoes`. O token correspondente vai para o
+     localStorage. Cada chamada envia o token; o servidor faz JOIN com `usuarios`
+     e confere a expiração. Apagar o token no navegador não apaga a sessão no
+     banco; ela só é removida no logout, na expiração usada ou por cascata.
+
+  5. Filme -> imagem
+     `filmes.imagem` e `filmes` do catálogo JSON apontam para um caminho em
+     `assets/img-filmes/` ou `uploads/`. O banco não guarda o binário.
+
+  6. JSON -> URLs externas
+     Fotos de elenco e logos de streaming podem ser URLs de image.tmdb.org. O
+     arquivo JSON guarda a URL; o navegador baixa a imagem.
+
+  7. Contas legadas -> banco
+     `pipo_clientes` (localStorage) é lido uma vez e enviado para
+     `/api/clientes/importar`. O servidor cria as contas e as playlists
+     obrigatórias. A chave local não é apagada.
+
+  8. Tema e plano
+     Não se relacionam com o banco. São preferências do navegador.
+
+  9. Cache do driver
+     Não se relaciona com dados de negócio. Apenas decide se a API fala com SQLite
+     ou MySQL.
+
+8.3 Dados derivados e duplicados
+
+  +-----------------------------+----------------------+----------------------+
+  | Dado                        | Origem               | Cópias               |
+  +-----------------------------+----------------------+----------------------+
+  | Catálogo de filmes          | dados/filmes.json    | js/dados-filmes.js,  |
+  |                             |                      | tabela filmes        |
+  | Nota do catálogo            | TMDB (via gerador)   | JSON, JS, filmes.nota|
+  | Média de avaliações         | tabela avaliacoes    | calculada na consulta|
+  | Contagem de avaliações      | tabela avaliacoes    | calculada; o campo   |
+  |                             |                      | num_avaliacoes é     |
+  |                             |                      | metadado separado    |
+  | Imagem do filme             | upload ou assets     | caminho no JSON/JS/DB|
+  | Conta do usuário            | cadastro/importação  | localStorage legado  |
+  |                             |                      | (até migrar)         |
+  | Sessão                      | login                | token no navegador + |
+  |                             |                      | linha em sessoes     |
+  +-----------------------------+----------------------+----------------------+
+
+8.4 Inconsistências conhecidas
+
+  1. O catálogo visual e o banco podem divergir (ver 4.3).
+  2. `filmes.nota` e `filmes.num_avaliacoes` não são recalculados pelas avaliações.
+  3. A imagem antiga não é removida quando o filme é editado ou excluído.
+  4. `pipo_clientes` permanece no navegador mesmo após a importação.
+  5. O MySQL e o SQLite podem coexistir com estados diferentes; o `.pipo_driver`
+     indica qual está ativo, mas não impede confusão.
+  6. O arquivo `dados/pipoquetas.sqlite` pode estar desatualizado se o MySQL for
+     o driver ativo.
+
+
+===============================================================================
+9. CLASSIFICAÇÃO: LOCAL, NAVEGADOR E EXTERNO
+===============================================================================
+
+9.1 Local (disco do servidor)
+
+  - Banco SQLite ou MySQL.
+  - `dados/filmes.json` e `js/dados-filmes.js`.
+  - Todos os assets em `assets/`.
+  - Imagens enviadas em `assets/img-filmes/uploads/`.
+  - Cache `dados/.pipo_driver`.
+  - Código-fonte, HTML, CSS, PHP e scripts.
+
+  Persistência: enquanto o disco existir. Não há replicação nem backup automático.
+
+9.2 Navegador
+
+  - Token de sessão (localStorage).
+  - Flag de migração e contas legadas (localStorage).
+  - Tema e plano (localStorage).
+  - Cache do usuário (sessionStorage).
+  - Cache HTTP de imagens, CSS e JS (gerenciado pelo navegador).
+
+  Persistência: até o usuário limpar os dados, trocar de navegador, trocar de
+  origem ou, no caso do sessionStorage, fechar a aba.
+
+9.3 Externo
+
+  - YouTube: vídeos de trailer.
+  - image.tmdb.org: fotos e logos remotos.
+  - Font Awesome: ícones.
+  - Sites de streaming: páginas de destino.
+  - TMDB API: apenas na geração offline.
+
+  Persistência: fora do controle do projeto. O servidor não guarda cópia desses
+  conteúdos, apenas referências (ids e URLs).
+
+9.4 Quadro comparativo
+
+  +-------------------------+------------------+------------------+--------------+
+  | Critério                | Local            | Navegador        | Externo      |
+  +-------------------------+------------------+------------------+--------------+
+  | Sobrevive a fechar aba  | Sim              | Só localStorage  | Sim          |
+  | Sobrevive a limpar site | Sim              | Não              | Sim          |
+  | Afetado por backup      | Sim              | Não              | Não          |
+  | Afetado por troca de PC | Não (fica no     | Não (fica no     | Não          |
+  |                         | servidor)        | navegador)       |              |
+  | Contém dado pessoal     | Sim              | Sim              | Pode conter  |
+  | Criptografado           | Não              | Não              | Não se aplica|
+  | Controlado pelo projeto | Sim              | Parcial          | Não          |
+  +-------------------------+------------------+------------------+--------------+
+
+
+===============================================================================
+10. BACKUP, RESTAURAÇÃO E RETENÇÃO
+===============================================================================
+
+10.1 O que deve ser copiado
+
+  Obrigatório para preservar o estado:
+
+    - dados/pipoquetas.sqlite (e -wal/-shm, se existirem), quando SQLite;
+    - banco `pipoquetas` via dump, quando MySQL;
+    - assets/img-filmes/uploads/ (imagens enviadas);
+    - dados/filmes.json e js/dados-filmes.js, se tiverem sido alterados.
+
+  Opcional:
+
+    - demais assets (fazem parte do projeto e podem ser recuperados do pacote);
+    - readme.txt e documentos.
+
+  Não é necessário copiar:
+
+    - dados/.pipo_driver (é recalculado);
+    - cache do navegador;
+    - arquivos temporários.
+
+10.2 Procedimento SQLite
+
+  Com o servidor parado:
+
+    1. copiar `dados/pipoquetas.sqlite` para um local seguro;
+    2. se existirem, copiar também `pipoquetas.sqlite-wal` e
+       `pipoquetas.sqlite-shm`;
+    3. copiar `assets/img-filmes/uploads/`;
+    4. guardar a data e a versão do código junto do backup.
+
+  Com o servidor em execução, o correto é usar o backup online do SQLite
+  (`.backup`), que consolida o WAL, em vez de copiar o arquivo a quente.
+
+10.3 Procedimento MySQL
+
+  Usar `mysqldump` para o banco `pipoquetas` e copiar a pasta de uploads. O
+  `.pipo_driver` não precisa ser copiado. Ao restaurar, garantir que o serviço
+  MySQL esteja ativo e que as credenciais fixas no código correspondam ao dump.
+
+10.4 Restauração
+
+  1. Parar o servidor.
+  2. Restaurar o banco no caminho/nome esperado.
+  3. Restaurar `assets/img-filmes/uploads/`.
+  4. Apagar `dados/.pipo_driver` para forçar nova detecção.
+  5. Iniciar o servidor e confirmar o driver escolhido.
+  6. Testar login, catálogo, playlists e avaliações.
+
+10.5 Retenção e expiração
+
+  +-----------------------------+-------------------------------------------+
+  | Dado                        | Regra de retenção observada               |
+  +-----------------------------+-------------------------------------------+
+  | Contas                      | Sem expiração; não há exclusão pela UI    |
+  | Sessões                     | 30 dias; removidas ao serem usadas depois |
+  |                             | de expirar                                |
+  | Códigos de redefinição      | 15 minutos; removidos ao serem usados;    |
+  |                             | expirados podem permanecer no banco       |
+  | Avaliações                  | Sem expiração; removidas por cascata com  |
+  |                             | o filme ou o usuário                      |
+  | Playlists e itens           | Sem expiração; removidos por cascata      |
+  | Notificações                | Sem expiração; removidas por cascata com  |
+  |                             | o usuário                                 |
+  | Imagens enviadas            | Sem expiração; não são removidas com o    |
+  |                             | filme                                     |
+  | Contas legadas no navegador | Sem expiração; não são removidas após a   |
+  |                             | migração                                  |
+  | Tema e plano                | Sem expiração; removidos ao limpar o site |
+  | Logs e métricas             | Não existem                               |
+  +-----------------------------+-------------------------------------------+
+
+  Não há rotina de expurgo, anonimização ou retenção máxima. Em uma operação real,
+  isso precisaria ser definido conforme a LGPD e o tipo de dado.
+
+
+===============================================================================
+11. EXCLUSÃO, ÓRFÃOS E CONSISTÊNCIA
+===============================================================================
+
+11.1 Exclusão de filme
+
+  - Remove a linha em `filmes`.
+  - Remove itens de playlist e avaliações por cascata.
+  - NÃO remove o arquivo de imagem em `uploads/`.
+  - NÃO remove o filme de `dados/filmes.json` nem de `js/dados-filmes.js`.
+  - A vitrine continua exibindo o filme; a página de detalhe continua abrindo,
+    mas a API de avaliações devolve 404.
+
+11.2 Exclusão de playlist
+
+  - Remove a linha em `playlists`.
+  - Remove os itens por cascata.
+  - Não afeta os filmes.
+
+11.3 Exclusão de usuário
+
+  - Não há interface. Se feita diretamente no banco, remove sessões, playlists,
+    itens, avaliações e notificações por cascata.
+  - Filmes com `empresa_id` apontando para esse usuário permanecem, pois
+    `filmes.empresa_id` não tem chave estrangeira. O resultado é um vínculo órfão.
+
+11.4 Exclusão de conta no navegador
+
+  - Limpar o site remove token, cache, tema, plano e contas legadas.
+  - Não remove nada do banco.
+  - O usuário pode entrar de novo se souber as credenciais.
+
+11.5 Órfãos possíveis
+
+  - Imagens em `uploads/` sem filme correspondente.
+  - Linhas em `sessoes` expiradas e nunca reutilizadas.
+  - Códigos `reset:` expirados e nunca usados.
+  - Filmes com `empresa_id` de usuário removido.
+  - Contas em `pipo_clientes` já importadas.
+  - Arquivos de pôster no disco sem referência no catálogo.
+
+  Não há rotina de limpeza para nenhum deles.
+
+
+===============================================================================
+12. SEGURANÇA DO ARMAZENAMENTO
+===============================================================================
+
+12.1 Proteções existentes
+
+  - Senhas são guardadas como hash bcrypt (`password_hash()`), não em texto puro.
+  - Consultas usam prepared statements.
+  - O roteador do PHP embutido bloqueia `/dados/`, dotfiles e extensões sensíveis.
+  - O upload valida o conteúdo real da imagem e o tamanho.
+  - O `.gitignore` exclui o banco SQLite, o cache do driver e o conteúdo de
+    `uploads/`.
+  - O export de cadastros não inclui hash de senha.
+
+12.2 Riscos
+
+  1. Banco SQLite dentro da pasta web
+     No modo Apache, `dados/pipoquetas.sqlite` pode ser baixado se não houver regra
+     de negação. O roteador local protege apenas o modo PHP embutido.
+
+  2. Exportação pública de cadastros
+     `GET /api/clientes/export` não exige login e devolve nome, usuário, e-mail,
+     CNPJ, nascimento, status e data de criação de todos os usuários. O arquivo
+     baixado (`clientes.json`) fica na pasta de downloads do navegador, sem
+     criptografia.
+
+  3. Contas legadas no localStorage
+     `pipo_clientes` pode conter hashes de senha e não é apagado após a migração.
+
+  4. Token em localStorage
+     Qualquer XSS na origem pode ler `pipo_sessao_token` e reutilizar a sessão.
+
+  5. Imagens enviadas são públicas
+     Qualquer pessoa com a URL de `assets/img-filmes/uploads/...` acessa o arquivo;
+     não há controle por dono ou por status do filme.
+
+  6. Chave da TMDB
+     `tmdb_chave.txt` não está no .gitignore e não é bloqueado pelo roteador PHP.
+     Se existir, pode ser servido ou versionado por engano.
+
+  7. Sem criptografia em repouso
+     SQLite, MySQL e arquivos são texto/binário aberto. A proteção depende do
+     sistema operacional e das permissões de pasta.
+
+  8. Sem backup automático
+     A perda do arquivo SQLite ou da pasta de uploads é definitiva, salvo cópia
+     manual.
+
+  9. Sem trilha de auditoria
+     Não é possível saber quem alterou um filme, aprovou uma empresa ou removeu um
+     registro.
+
+ 10. Cache HTTP
+     Imagens e arquivos podem permanecer no cache do navegador por até 7 dias,
+     mesmo depois de removidos do servidor.
+
+12.3 Recomendações mínimas
+
+  - Manter `dados/` fora da raiz pública ou negar acesso no Apache.
+  - Remover `pipo_clientes` do localStorage após migração bem-sucedida.
+  - Proteger exportação/importação com autenticação e autorização.
+  - Adicionar `tmdb_chave.txt` ao .gitignore e bloqueá-lo no roteador.
+  - Fazer backup periódico do banco e de `uploads/`.
+  - Definir retenção para sessões, códigos e imagens órfãs.
+  - Não usar o export público em ambiente com dados reais.
+  - Considerar cookie HttpOnly/Secure e proteção CSRF se o sistema evoluir.
+
+
+===============================================================================
+13. SNAPSHOT DO ARMAZENAMENTO (13/11/2026)
+===============================================================================
+
+13.1 Banco SQLite
+
+  +------------------+----------------------------+
+  | Item             | Valor                      |
+  +------------------+----------------------------+
+  | Arquivo          | dados/pipoquetas.sqlite    |
+  | Tamanho          | 327.680 bytes (320 KB)     |
+  | Tabelas de dados | 8                          |
+  | usuarios         | 11                         |
+  | sessoes          | 3                          |
+  | filmes           | 75                         |
+  | playlists        | 22                         |
+  | playlist_itens   | 3                          |
+  | avaliacoes       | 173                        |
+  | notificacoes     | 18                         |
+  +------------------+----------------------------+
+
+  Distribuição dos usuários:
+
+    administrador/ativo .. 1
+    empresa/ativo ........ 1
+    usuario/ativo ........ 9
+
+  Distribuição dos filmes:
+
+    aprovado ............. 75
+    pendente ............. 0
+    recusado ............. 0
+
+  Observação: o banco é uma fotografia do estado atual. A carga inicial e o uso
+  posterior podem alterar esses números.
+
+13.2 Catálogo e assets
+
+  +-------------------------------+----------+-------------------------------+
+  | Item                          | Arquivos | Tamanho aproximado            |
+  +-------------------------------+----------+-------------------------------+
+  | dados/filmes.json             | 1        | 178 KB                        |
+  | js/dados-filmes.js            | 1        | 178 KB                        |
+  | assets/img-filmes/            | 76       | 8,9 MB                        |
+  | assets/img-filmes/uploads/    | 1        | 0 KB (só .gitkeep)            |
+  | assets/img-elenco/            | 12       | 2,0 MB                        |
+  | assets/img-hero/              | 3        | 388 KB                        |
+  | assets/img_class/             | 6        | 28 KB                         |
+  | assets/img-logos/             | 8        | 188 KB                        |
+  | assets/logos/                 | 2        | 168 KB                        |
+  | assets/fonts/                 | 1        | 68 KB                         |
+  | assets (total)                | 112      | 12,2 MB                       |
+  | dados/ (total)                | 3        | 505 KB                        |
+  +-------------------------------+----------+-------------------------------+
+
+  Referências no catálogo:
+
+    pôsteres locais ................ 75
+    fotos de elenco locais ......... 26 usos (12 fotos + avatar.png)
+    fotos de elenco remotas ........ 375 URLs
+    logos de streaming locais ...... 20 usos (6 arquivos; 8 na pasta)
+    logos de streaming remotos ..... 157 URLs
+    trailers com id do YouTube ..... 65 (10 filmes sem trailer)
+    imagens remotas totais ......... 532 URLs
+
+13.3 Navegador
+
+  Não há como medir o conteúdo do navegador do usuário a partir do servidor. Em uma
+  sessão típica, espera-se:
+
+    localStorage .... token (48 caracteres), flag, tema, plano e, se existir, o
+                      array de contas legadas;
+    sessionStorage .. cache do usuário por 5 minutos.
+
+  Nenhum desses dados é incluído em backup do servidor.
+
+13.4 Arquivos de controle
+
+  +-------------------------------+----------+-------------------------------+
+  | Arquivo                       | Existe?  | Observação                    |
+  +-------------------------------+----------+-------------------------------+
+  | dados/.pipo_driver            | Sim      | 43 bytes; driver sqlite       |
+  | dados/pipoquetas.sqlite-wal   | Não      | Só com o servidor ativo       |
+  | dados/pipoquetas.sqlite-shm   | Não      | Só existe com o servidor ativo|
+  | tmdb_chave.txt                | Não      | Necessário só para o gerador  |
+  | clientes.json (download)      | Não      | Só após o usuário exportar    |
+  +-------------------------------+----------+-------------------------------+
+
+
+===============================================================================
+14. MAPA DE DADOS
+===============================================================================
+
+  +---------------------------+---------------------------+-----------------------+
+  | Dado                      | Onde é guardado           | Chave/caminho         |
+  +---------------------------+---------------------------+-----------------------+
+  | Conta de usuário          | Banco                     | usuarios              |
+  | Hash de senha             | Banco                     | usuarios.senha_hash   |
+  | Sessão de login           | Banco                     | sessoes.token         |
+  | Token no navegador        | localStorage              | pipo_sessao_token     |
+  | Cache do usuário          | sessionStorage            | pipo_usuario_cache_v1 |
+  | Código de redefinição     | Banco                     | sessoes.token (reset:)|
+  | Filme (catálogo)          | Banco                     | filmes                |
+  | Filme (vitrine)           | js/dados-filmes.js        | filmesData            |
+  | Filme (mestre)            | dados/filmes.json         | array de objetos      |
+  | Pôster                    | assets/img-filmes/        | caminho em imagem     |
+  | Imagem enviada            | assets/img-filmes/uploads/| caminho em imagem     |
+  | Elenco local              | assets/img-elenco/        | elenco[].foto         |
+  | Elenco remoto             | image.tmdb.org            | URL em elenco[].foto  |
+  | Logo local                | assets/img-logos/         | ondeAssistir[].logo   |
+  | Logo remoto               | image.tmdb.org            | URL em ondeAssistir[] |
+  | Trailer                   | YouTube (id no banco/JS)  | trailerYoutubeId      |
+  | Playlist                  | Banco                     | playlists             |
+  | Item de playlist          | Banco                     | playlist_itens        |
+  | Avaliação                 | Banco                     | avaliacoes            |
+  | Notificação               | Banco                     | notificacoes          |
+  | Tema                      | localStorage              | pipoquetas-tema       |
+  | Plano escolhido           | localStorage              | pipoquetas-plano      |
+  | Conta legada              | localStorage              | pipo_clientes         |
+  | Flag de migração          | localStorage              | pipo_migrado_bd       |
+  | Driver do banco           | Arquivo                   | dados/.pipo_driver    |
+  | Versão do esquema/carga   | Banco                     | pipo_meta             |
+  | Cadastros exportados      | Download do navegador     | clientes.json         |
+  | Logs                      | Não existem               | —                     |
+  +---------------------------+---------------------------+-----------------------+
+
+  Observação: "Banco" significa SQLite ou MySQL, conforme o driver ativo. As duas
+  opções não são sincronizadas entre si.
+
+
+===============================================================================
+15. CHECKLIST DE VERIFICAÇÃO
+===============================================================================
+
+  [ ] O arquivo `dados/pipoquetas.sqlite` existe e a pasta `dados/` é gravável?
+  [ ] O `.pipo_driver` aponta para o banco que está sendo usado de fato?
+  [ ] O banco ativo tem as 8 tabelas e os dados esperados?
+  [ ] `dados/filmes.json` e `js/dados-filmes.js` têm os mesmos 75 ids?
+  [ ] Os pôsteres referenciados existem em `assets/img-filmes/`?
+  [ ] As imagens de upload estão em `assets/img-filmes/uploads/`?
+  [ ] Há imagens órfãs em `uploads/`?
+  [ ] As fotos de elenco e logos remotos ainda respondem?
+  [ ] O localStorage contém apenas as chaves esperadas?
+  [ ] `pipo_clientes` foi removido após a migração?
+  [ ] O backup inclui banco + uploads + catálogo alterado?
+  [ ] O banco está protegido contra download no modo Apache?
+  [ ] `tmdb_chave.txt` existe? Está fora do versionamento e do acesso web?
+  [ ] A exportação de cadastros continua pública?
+  [ ] Há sessões ou códigos de redefinição acumulados?
+  [ ] O cache HTTP de imagens está impedindo a atualização de algum pôster?
+
+
+===============================================================================
+FIM DO DOCUMENTO
+===============================================================================
